@@ -1,0 +1,217 @@
+<UserControl x:Class="ExpertAdminTrainerApp.Presentation.Views.CatalogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis" />
+
+        <DataTemplate x:Key="MaterialCardTemplate">
+            <Border Padding="10" Margin="0,0,0,6"
+                    Background="{DynamicResource ControlFillColorDefaultBrush}" CornerRadius="6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16"
+                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                            VerticalAlignment="Center" Margin="0,0,10,0">
+                        <TextBlock Text="{Binding SortOrder}" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" />
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title, TargetNullValue='(без названия)'}"
+                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Url}" Opacity="0.55"
+                                   TextTrimming="CharacterEllipsis" FontSize="12" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:Button Margin="4,0" Appearance="Transparent" Content="Открыть"
+                                   Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                   CommandParameter="{Binding Url}" />
+                        <ui:Button Margin="4,0" Appearance="Transparent" Content="Изменить"
+                                   Visibility="{Binding DataContext.IsAdmin, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolVis}}"
+                                   Command="{Binding DataContext.BeginEditMaterialCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                   CommandParameter="{Binding}" />
+                        <ui:Button Margin="4,0" Appearance="Danger" Content="Удалить"
+                                   Visibility="{Binding DataContext.IsAdmin, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolVis}}"
+                                   Command="{Binding DataContext.DeleteMaterialItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                   CommandParameter="{Binding}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Margin="8">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <DockPanel Grid.Column="0" Margin="0,0,8,0">
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <DockPanel>
+                    <ui:Button DockPanel.Dock="Right" Appearance="Primary" Content="+ Новый"
+                               Command="{Binding BeginCreateCnnCommand}" />
+                    <ui:TextBlock FontTypography="BodyStrong" Text="Варианты КИМ" VerticalAlignment="Center" />
+                </DockPanel>
+                <Border Margin="0,8,0,0" Padding="10" CornerRadius="6"
+                        Background="{DynamicResource ControlFillColorDefaultBrush}"
+                        Visibility="{Binding IsCreatingCnn, Converter={StaticResource BoolVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Новый вариант" FontWeight="SemiBold" Margin="0,0,0,6" />
+                        <ui:TextBox PlaceholderText="Предмет (напр. Русский язык)" Margin="0,0,0,4"
+                                    Text="{Binding NewCnnSubject, UpdateSourceTrigger=PropertyChanged}" />
+                        <ui:TextBox PlaceholderText="Номер варианта" Margin="0,0,0,6" Text="{Binding NewCnnOption}" />
+                        <WrapPanel>
+                            <ui:Button Appearance="Primary" Content="Создать" Margin="0,0,6,0"
+                                       Command="{Binding ConfirmCreateCnnCommand}" />
+                            <ui:Button Appearance="Secondary" Content="Отмена" Command="{Binding CancelCreateCnnCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            <ListBox ItemsSource="{Binding Cnns}" SelectedItem="{Binding SelectedCnn}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="4">
+                            <TextBlock Text="{Binding Subject}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Option, StringFormat=Вариант {0}}" Opacity="0.6" FontSize="12" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <Border Grid.Column="1">
+            <Grid>
+                <TextBlock Text="Выберите вариант КИМ из списка слева"
+                           VerticalAlignment="Center" HorizontalAlignment="Center"
+                           Opacity="0.4" FontSize="14"
+                           Visibility="{Binding HasNoSelectedCnn, Converter={StaticResource BoolVis}}" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              Visibility="{Binding HasSelectedCnn, Converter={StaticResource BoolVis}}">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <ui:Button Appearance="Transparent" Content="Изменить" Margin="4,0"
+                                           Command="{Binding BeginEditCnnCommand}" />
+                                <ui:Button Appearance="Danger" Content="Удалить" Command="{Binding DeleteCnnCommand}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <ui:TextBlock FontTypography="Subtitle" Text="{Binding SelectedCnn.Subject}" />
+                                <TextBlock Text="{Binding SelectedCnn.Option, StringFormat=Вариант {0}}" Opacity="0.6" />
+                            </StackPanel>
+                        </DockPanel>
+                        <Border Margin="0,0,0,10" Padding="12" CornerRadius="6"
+                                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                Visibility="{Binding IsEditingCnn, Converter={StaticResource BoolVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Редактирование варианта" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                <ui:TextBox PlaceholderText="Предмет" Margin="0,0,0,4"
+                                            Text="{Binding EditCnnSubject, UpdateSourceTrigger=PropertyChanged}" />
+                                <ui:TextBox PlaceholderText="Номер варианта" Margin="0,0,0,6" Text="{Binding EditCnnOption}" />
+                                <WrapPanel>
+                                    <ui:Button Appearance="Primary" Content="Сохранить" Margin="0,0,6,0"
+                                               Command="{Binding ConfirmEditCnnCommand}" />
+                                    <ui:Button Appearance="Secondary" Content="Отмена" Command="{Binding CancelEditCnnCommand}" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="0,0,0,10" Padding="12" CornerRadius="6" BorderThickness="2"
+                                BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                Visibility="{Binding IsEditingMaterial, Converter={StaticResource BoolVis}}">
+                            <StackPanel>
+                                <TextBlock FontWeight="SemiBold" Margin="0,0,0,6" Text="{Binding EditingMaterialKindLabel}" />
+                                <ui:TextBox PlaceholderText="Название (необязательно)" Margin="0,0,0,4"
+                                            Text="{Binding MaterialTitle, UpdateSourceTrigger=PropertyChanged}" />
+                                <DockPanel Margin="0,0,0,4">
+                                    <ui:Button DockPanel.Dock="Right" Appearance="Secondary" Content="Выбрать файл"
+                                               Command="{Binding PickMaterialFileCommand}" Margin="4,0,0,0" />
+                                    <ui:TextBox PlaceholderText="URL файла (обязательно)"
+                                                Text="{Binding MaterialUrl, UpdateSourceTrigger=PropertyChanged}" />
+                                </DockPanel>
+                                <ui:TextBox PlaceholderText="Порядок сортировки" Margin="0,0,0,6"
+                                            Width="160" HorizontalAlignment="Left" Text="{Binding MaterialSortOrder}" />
+                                <WrapPanel>
+                                    <ui:Button Appearance="Primary" Content="Сохранить" Margin="0,0,6,0"
+                                               Command="{Binding SaveMaterialCommand}" />
+                                    <ui:Button Appearance="Secondary" Content="Отмена"
+                                               Command="{Binding CancelEditMaterialCommand}" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <ui:Card Padding="10" Margin="0,0,0,8">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,6">
+                                    <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Content="+ Добавить"
+                                               Command="{Binding BeginAddMaterialCommand}" CommandParameter="Kim" />
+                                    <StackPanel>
+                                        <TextBlock Text="КИМ (задания)" FontWeight="Bold" />
+                                        <TextBlock Text="Файлы с заданиями экзамена для учеников" Opacity="0.5" FontSize="12" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <ItemsControl ItemsSource="{Binding KimMaterials}" ItemTemplate="{StaticResource MaterialCardTemplate}" />
+                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="12" Margin="0,4,0,0">
+                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding KimMaterials.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </ui:Card>
+                        <ui:Card Padding="10" Margin="0,0,0,8">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,6">
+                                    <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Content="+ Добавить"
+                                               Command="{Binding BeginAddMaterialCommand}" CommandParameter="Criteria" />
+                                    <StackPanel>
+                                        <TextBlock Text="Критерии оценивания" FontWeight="Bold" />
+                                        <TextBlock Text="Критерии проверки развернутых ответов (только для экспертов)" Opacity="0.5" FontSize="12" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <ItemsControl ItemsSource="{Binding CriteriaMaterials}" ItemTemplate="{StaticResource MaterialCardTemplate}" />
+                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="12" Margin="0,4,0,0">
+                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding CriteriaMaterials.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </ui:Card>
+                        <ui:Card Padding="10" Margin="0,0,0,8">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,6">
+                                    <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Content="+ Добавить"
+                                               Command="{Binding BeginAddMaterialCommand}" CommandParameter="Blanks" />
+                                    <StackPanel>
+                                        <TextBlock Text="Бланки ответов" FontWeight="Bold" />
+                                        <TextBlock Text="Шаблоны бланков, которые заполняют ученики" Opacity="0.5" FontSize="12" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <ItemsControl ItemsSource="{Binding BlanksMaterials}" ItemTemplate="{StaticResource MaterialCardTemplate}" />
+                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="12" Margin="0,4,0,0">
+                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding BlanksMaterials.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </ui:Card>
+                        <ui:Card Padding="10" Margin="0,0,0,8">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,6">
+                                    <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Content="+ Добавить"
+                                               Command="{Binding BeginAddMaterialCommand}" CommandParameter="Other" />
+                                    <StackPanel>
+                                        <TextBlock Text="Прочие материалы" FontWeight="Bold" />
+                                        <TextBlock Text="Дополнительные файлы и документы" Opacity="0.5" FontSize="12" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <ItemsControl ItemsSource="{Binding OtherMaterials}" ItemTemplate="{StaticResource MaterialCardTemplate}" />
+                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="12" Margin="0,4,0,0">
+                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding OtherMaterials.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </ui:Card>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,267 @@
+<UserControl x:Class="ExpertAdminTrainerApp.Presentation.Views.OrdersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis" />
+    </UserControl.Resources>
+
+    <Grid Margin="8">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Left: Queue List -->
+        <DockPanel Grid.Column="0" Margin="0,0,8,0">
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <ComboBox Width="200" Margin="0,0,0,6"
+                          ItemsSource="{Binding QueueStatusOptions}"
+                          SelectedItem="{Binding QueueStatusFilter}" />
+                <ui:Button Appearance="Primary" Content="Обновить" Command="{Binding LoadQueueCommand}" />
+            </StackPanel>
+            <ListBox ItemsSource="{Binding QueueOrders}" SelectedItem="{Binding SelectedQueueOrder}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="4">
+                            <TextBlock FontWeight="SemiBold">
+                                <Run Text="Заказ #" /><Run Text="{Binding Id, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Opacity="0.7" FontSize="12">
+                                <Run Text="CNN:" /><Run Text="{Binding CnnId, Mode=OneWay}" />
+                                <Run Text="  User:" /><Run Text="{Binding UserId, Mode=OneWay}" />
+                            </TextBlock>
+                            <TextBlock Text="{Binding Status}" FontSize="12"
+                                       Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <!-- Right: Order Detail -->
+        <Border Grid.Column="1" Padding="4">
+            <Grid>
+                <TextBlock Text="Выберите заказ из списка слева"
+                           VerticalAlignment="Center" HorizontalAlignment="Center"
+                           Opacity="0.4" FontSize="14"
+                           Visibility="{Binding HasNoSelectedOrder, Converter={StaticResource BoolVis}}" />
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              Visibility="{Binding HasSelectedOrder, Converter={StaticResource BoolVis}}">
+                    <StackPanel>
+                        <ui:TextBlock FontTypography="Subtitle">
+                            <Run Text="Заказ #" /><Run Text="{Binding SelectedQueueOrder.Id, Mode=OneWay}" />
+                        </ui:TextBlock>
+
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Статус:" FontWeight="SemiBold" Margin="0,0,12,4"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedQueueOrder.Status}" />
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Студент:" FontWeight="SemiBold" Margin="0,0,12,4"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedQueueOrder.UserId, StringFormat=User #{0}}" />
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Эксперт:" FontWeight="SemiBold" Margin="0,0,12,4"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedQueueOrder.ExpertId, TargetNullValue='(не назначен)'}" />
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Причина отказа:" FontWeight="SemiBold" Margin="0,0,12,4"
+                                       Visibility="{Binding SelectedQueueOrder.RejectionReason, Converter={StaticResource BoolVis}}" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedQueueOrder.RejectionReason}"
+                                       Foreground="OrangeRed"
+                                       Visibility="{Binding SelectedQueueOrder.RejectionReason, Converter={StaticResource BoolVis}}" />
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Изменен:" FontWeight="SemiBold" Margin="0,0,12,4"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedQueueOrder.ChangedAt}" />
+                        </Grid>
+
+                        <ui:Card Padding="10" Margin="0,10,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Ответ ученика" FontWeight="SemiBold" />
+                                <DockPanel Margin="0,4,0,0">
+                                    <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Content="Открыть"
+                                               Command="{Binding OpenUrlCommand}"
+                                               CommandParameter="{Binding SelectedQueueOrder.AnswerUrl}" />
+                                    <TextBlock Text="{Binding SelectedQueueOrder.AnswerUrl, TargetNullValue='(нет ссылки)'}"
+                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Opacity="0.7" />
+                                </DockPanel>
+                            </StackPanel>
+                        </ui:Card>
+
+                        <ui:Card Padding="10" Margin="0,6,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Задания (КИМ)" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                <ItemsControl ItemsSource="{Binding OrderKimMaterials}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel Margin="0,2">
+                                                <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Content="Открыть"
+                                                           Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                           CommandParameter="{Binding Url}" />
+                                                <TextBlock Text="{Binding Title, TargetNullValue='(без названия)'}" VerticalAlignment="Center" />
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="(нет)" Opacity="0.35" FontSize="12">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding OrderKimMaterials.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </ui:Card>
+
+                        <ui:Card Padding="10" Margin="0,6,0,0"
+                                 Visibility="{Binding IsExpert, Converter={StaticResource BoolVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Критерии проверки" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                <ItemsControl ItemsSource="{Binding OrderCriteriaMaterials}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel Margin="0,2">
+                                                <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Content="Открыть"
+                                                           Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                           CommandParameter="{Binding Url}" />
+                                                <TextBlock Text="{Binding Title, TargetNullValue='(без названия)'}" VerticalAlignment="Center" />
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="(нет)" Opacity="0.35" FontSize="12">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding OrderCriteriaMaterials.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </ui:Card>
+
+                        <ui:Card Padding="10" Margin="0,10,0,0"
+                                 Visibility="{Binding IsExpert, Converter={StaticResource BoolVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Действия эксперта" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <WrapPanel Margin="0,0,0,8">
+                                    <ui:Button Appearance="Primary" Margin="0,0,8,0" Content="Взять в работу"
+                                               Command="{Binding ClaimSelectedOrderCommand}" />
+                                    <ui:Button Appearance="Danger" Content="Отклонить"
+                                               Command="{Binding BeginRejectOrderCommand}" />
+                                </WrapPanel>
+                                <StackPanel Visibility="{Binding IsRejectingOrder, Converter={StaticResource BoolVis}}">
+                                    <ui:TextBox PlaceholderText="Причина отклонения (обязательно)"
+                                                Text="{Binding RejectionReason, UpdateSourceTrigger=PropertyChanged}"
+                                                Margin="0,0,0,6" />
+                                    <WrapPanel>
+                                        <ui:Button Appearance="Danger" Content="Подтвердить отклонение" Margin="0,0,8,0"
+                                                   Command="{Binding ConfirmRejectOrderCommand}" />
+                                        <ui:Button Appearance="Secondary" Content="Отмена"
+                                                   Command="{Binding CancelRejectOrderCommand}" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </ui:Card>
+
+                        <ui:Card Padding="10" Margin="0,8,0,0"
+                                 Visibility="{Binding IsExpert, Converter={StaticResource BoolVis}}">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,6">
+                                    <ui:Button DockPanel.Dock="Right" Appearance="Transparent"
+                                               Content="Редактировать проверку"
+                                               Command="{Binding BeginEditReviewCommand}" />
+                                    <TextBlock Text="Проверка (Review)" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <StackPanel Visibility="{Binding HasReview, Converter={StaticResource BoolVis}}">
+                                    <TextBlock>
+                                        <Run Text="Итоговый балл: " FontWeight="SemiBold" />
+                                        <Run Text="{Binding CurrentReview.TotalScore, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding CurrentReview.GeneralComment}" Opacity="0.7" Margin="0,2,0,4" TextWrapping="Wrap" />
+                                    <ItemsControl ItemsSource="{Binding ReviewCriteria}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock FontSize="12" Opacity="0.7" Margin="0,1">
+                                                    <Run Text="Зад. " /><Run Text="{Binding TaskNumber, Mode=OneWay}" />
+                                                    <Run Text=" | " /><Run Text="{Binding CriterionCode, Mode=OneWay}" />
+                                                    <Run Text=" = " /><Run Text="{Binding Score, Mode=OneWay}" />
+                                                    <Run Text=" балл(ов)" />
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                                <TextBlock Text="Проверка ещё не заполнена" Opacity="0.4"
+                                           Visibility="{Binding HasNoReview, Converter={StaticResource BoolVis}}" />
+                                <Border Margin="0,8,0,0" Padding="10" CornerRadius="6"
+                                        Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                        Visibility="{Binding IsEditingReview, Converter={StaticResource BoolVis}}">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Итог (баллы):" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <ui:TextBox Grid.Column="1" Text="{Binding ReviewTotalScore}" />
+                                        </Grid>
+                                        <ui:TextBox PlaceholderText="Общий комментарий (необязательно)"
+                                                    Text="{Binding ReviewGeneralComment, UpdateSourceTrigger=PropertyChanged}"
+                                                    Margin="0,0,0,6" AcceptsReturn="True" Height="50" />
+                                        <TextBlock Text="Критерии:" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                        <ItemsControl ItemsSource="{Binding ReviewCriteria}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="60" />
+                                                            <ColumnDefinition Width="80" />
+                                                            <ColumnDefinition Width="60" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <ui:TextBox Grid.Column="0" Margin="0,0,4,0" PlaceholderText="Зад."
+                                                                    Text="{Binding TaskNumber, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <ui:TextBox Grid.Column="1" Margin="0,0,4,0" PlaceholderText="Критерий"
+                                                                    Text="{Binding CriterionCode, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <ui:TextBox Grid.Column="2" Margin="0,0,4,0" PlaceholderText="Балл"
+                                                                    Text="{Binding Score, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <ui:TextBox Grid.Column="3" Margin="0,0,4,0" PlaceholderText="Комментарий"
+                                                                    Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <ui:Button Grid.Column="4" Appearance="Danger" Content="✕"
+                                                                   Command="{Binding DataContext.RemoveReviewCriterionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                   CommandParameter="{Binding}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <WrapPanel Margin="0,8,0,0">
+                                            <ui:Button Appearance="Transparent" Content="+ Критерий" Margin="0,0,6,0"
+                                                       Command="{Binding AddReviewCriterionCommand}" />
+                                            <ui:Button Appearance="Primary" Content="Сохранить проверку" Margin="0,0,6,0"
+                                                       Command="{Binding SaveReviewCommand}" />
+                                            <ui:Button Appearance="Secondary" Content="Отмена"
+                                                       Command="{Binding CancelEditReviewCommand}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ui:Card>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ExpertAdminTrainerApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dd181ac421a15bff131432cae562ec5afc03ec2a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b4ae61f8fc7253cac7cbde45703c8242cd3f4430")]
 [assembly: System.Reflection.AssemblyProductAttribute("ExpertAdminTrainerApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ExpertAdminTrainerApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

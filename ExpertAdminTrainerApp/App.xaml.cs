@@ -1,35 +1,56 @@
 ﻿using System.IO;
+using System.Net.Http.Headers;
 using System.Windows;
+using ExpertAdminTrainerApp.Presentation.ViewModels;
+using ExpertAdminTrainerApp.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace ExpertAdminTrainerApp
+namespace ExpertAdminTrainerApp;
+
+public partial class App : Application
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
-    public partial class App : Application
+    public static IConfiguration Configuration { get; private set; } = null!;
+    public static IServiceProvider Services { get; private set; } = null!;
+
+    public static string ApiBaseUrl => Configuration["Api:BaseUrl"] ?? string.Empty;
+    public static string OpenApiSpecRelativePath => Configuration["Api:OpenApiSpec"] ?? "Swagger/swagger.json";
+
+    protected override void OnStartup(StartupEventArgs e)
     {
-        public static IConfiguration Configuration { get; private set; } = null!;
+        var builder = new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
-        /// <summary>Базовый URL API из appsettings.json (секция Api:BaseUrl).</summary>
-        public static string ApiBaseUrl => Configuration["Api:BaseUrl"] ?? string.Empty;
+        Configuration = builder.Build();
 
-        /// <summary>Относительный путь к OpenAPI-файлу в выходной папке (секция Api:OpenApiSpec).</summary>
-        public static string OpenApiSpecRelativePath =>
-            Configuration["Api:OpenApiSpec"] ?? "Swagger/swagger.json";
+        var services = new ServiceCollection();
+        ConfigureServices(services);
+        Services = services.BuildServiceProvider();
 
-        protected override void OnStartup(StartupEventArgs e)
+        var window = Services.GetRequiredService<MainWindow>();
+        window.Show();
+
+        base.OnStartup(e);
+    }
+
+    public static string GetOpenApiSpecFullPath() => Path.Combine(AppContext.BaseDirectory, OpenApiSpecRelativePath);
+
+    private static void ConfigureServices(IServiceCollection services)
+    {
+        services.AddSingleton<IConfiguration>(Configuration);
+        services.AddSingleton<ITokenStore, FileTokenStore>();
+        services.AddHttpClient<IApiClient, ApiClient>((provider, client) =>
         {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-            Configuration = builder.Build();
+            var configuration = provider.GetRequiredService<IConfiguration>();
+            var baseUrl = configuration["Api:BaseUrl"] ?? "https://localhost:7128";
+            client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        });
 
-            base.OnStartup(e);
-        }
-
-        /// <summary>Полный путь к swagger.json рядом с exe (для чтения файла).</summary>
-        public static string GetOpenApiSpecFullPath() =>
-            Path.Combine(AppContext.BaseDirectory, OpenApiSpecRelativePath);
+        services.AddSingleton<BlankTemplateService>();
+        services.AddSingleton<BlankConstructorViewModel>();
+        services.AddSingleton<MainViewModel>();
+        services.AddSingleton<MainWindow>();
     }
 }

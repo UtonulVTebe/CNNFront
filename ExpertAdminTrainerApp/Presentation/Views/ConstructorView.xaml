@@ -1,0 +1,235 @@
+<UserControl x:Class="ExpertAdminTrainerApp.Presentation.Views.ConstructorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:controls="clr-namespace:ExpertAdminTrainerApp.Presentation.Controls"
+             Loaded="OnLoaded">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis" />
+    </UserControl.Resources>
+
+    <DockPanel Margin="8">
+        <!-- Status Bar -->
+        <Border DockPanel.Dock="Bottom" Padding="8,6" Margin="0,6,0,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding ViewerStatus}" Opacity="0.6"
+                           FontSize="12" VerticalAlignment="Center" />
+                <WrapPanel>
+                    <ui:Button Content="Сохранить" Appearance="Primary" Margin="0,0,6,0"
+                               Command="{Binding SaveTemplateCommand}" />
+                    <ui:Button Content="Экспорт JSON" Appearance="Secondary" Margin="0,0,6,0"
+                               Command="{Binding ExportTemplateCommand}" />
+                    <ui:Button Content="Импорт JSON" Appearance="Secondary"
+                               Command="{Binding ImportTemplateCommand}" />
+                </WrapPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Sub-Tabs -->
+        <TabControl TabStripPlacement="Top">
+
+            <!-- ===== Sub-tab 1: Настройка варианта ===== -->
+            <TabItem Header="1. Настройка варианта">
+                <Grid Margin="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="360" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                        <ui:TextBlock FontTypography="Subtitle" Text="Вариант КИМ" Margin="0,0,0,8" />
+                        <ComboBox ItemsSource="{Binding Cnns}" SelectedItem="{Binding SelectedCnn}"
+                                  DisplayMemberPath="Subject" Margin="0,0,0,16" />
+
+                        <ui:TextBlock FontTypography="Subtitle" Text="Страницы бланков" Margin="0,0,0,8" />
+                        <TextBlock Text="Выберите тип бланка и добавьте страницу. Для каждой страницы загрузите изображение (скан бланка)."
+                                   TextWrapping="Wrap" Opacity="0.5" FontSize="12" Margin="0,0,0,8" />
+
+                        <DockPanel Margin="0,0,0,8">
+                            <ui:Button DockPanel.Dock="Right" Appearance="Primary" Content="+ Добавить"
+                                       Command="{Binding AddPageCommand}" Margin="6,0,0,0" />
+                            <ComboBox ItemsSource="{Binding BlankTypeOptions}"
+                                      SelectedItem="{Binding NewPageBlankType}" />
+                        </DockPanel>
+
+                        <ListBox ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}" MaxHeight="260">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="4">
+                                        <StackPanel>
+                                            <TextBlock FontWeight="SemiBold">
+                                                <Run Text="{Binding BlankType, Mode=OneWay}" />
+                                                <Run Text=" — стр. " /><Run Text="{Binding PageNumber, Mode=OneWay}" />
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding ImagePath, TargetNullValue='(изображение не загружено)'}"
+                                                       TextTrimming="CharacterEllipsis" Opacity="0.5" FontSize="11" MaxWidth="280" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <WrapPanel Margin="0,8,0,0">
+                            <ui:Button Content="Загрузить изображение" Appearance="Secondary" Margin="0,0,6,0"
+                                       Command="{Binding LoadPageImageCommand}" />
+                            <ui:Button Content="Удалить страницу" Appearance="Danger"
+                                       Command="{Binding RemovePageCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <Border Grid.Column="1" Background="{DynamicResource ControlFillColorDefaultBrush}"
+                            CornerRadius="8" Padding="8">
+                        <Grid>
+                            <TextBlock Text="Выберите страницу и загрузите изображение бланка"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Opacity="0.3" FontSize="14" TextWrapping="Wrap" TextAlignment="Center" />
+                            <Image Source="{Binding PageImageSource}" Stretch="Uniform" VerticalAlignment="Top" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- ===== Sub-tab 2: Разметка зон ===== -->
+            <TabItem Header="2. Разметка зон">
+                <Grid Margin="4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="230" />
+                    </Grid.ColumnDefinitions>
+
+                    <DockPanel Grid.Column="0" Margin="0,0,8,0">
+                        <Border DockPanel.Dock="Top" Padding="8" Margin="0,0,0,4"
+                                Background="{DynamicResource ControlFillColorDefaultBrush}" CornerRadius="6">
+                            <WrapPanel>
+                                <ui:Button Content="⇦ Выбрать" Margin="0,0,6,0" Command="{Binding SetModeSelectCommand}" />
+                                <ui:Button Content="▪ Ячейка" Margin="0,0,6,0" Command="{Binding SetModeStampSingleCommand}" />
+                                <ui:Button Content="▪▪▪ Ряд" Margin="0,0,12,0" Command="{Binding SetModeStampRowCommand}" />
+                                <Separator Margin="0,0,12,0" />
+                                <TextBlock Text="Кол-во:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
+                                <ui:TextBox Width="45" Text="{Binding RowCellCount}" Margin="0,0,10,0" />
+                                <TextBlock Text="Ш%:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
+                                <ui:TextBox Width="45" Text="{Binding CellWidth}" Margin="0,0,6,0" />
+                                <TextBlock Text="В%:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
+                                <ui:TextBox Width="45" Text="{Binding CellHeight}" Margin="0,0,6,0" />
+                                <TextBlock Text="Зазор%:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
+                                <ui:TextBox Width="45" Text="{Binding CellGap}" />
+                            </WrapPanel>
+                        </Border>
+
+                        <Border DockPanel.Dock="Top" Padding="6,4" Margin="0,0,0,4">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="Страница:" VerticalAlignment="Center"
+                                           FontWeight="SemiBold" Margin="0,0,8,0" />
+                                <ComboBox ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}"
+                                          DisplayMemberPath="BlankType" />
+                            </DockPanel>
+                        </Border>
+
+                        <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                CornerRadius="6" ClipToBounds="True">
+                            <Grid>
+                                <TextBlock Text="Загрузите изображение бланка на вкладке «Настройка варианта»"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Opacity="0.3" FontSize="14" TextWrapping="Wrap" TextAlignment="Center" />
+                                <controls:ZoneEditorCanvas x:Name="EditorCanvas"
+                                    Focusable="True"
+                                    ImageSource="{Binding PageImageSource}"
+                                    Zones="{Binding CurrentZones}"
+                                    SelectedZone="{Binding SelectedZone, Mode=TwoWay}"
+                                    EditorMode="{Binding EditorMode}"
+                                    StampFieldType="{Binding StampFieldType}"
+                                    StampFieldName="{Binding StampFieldName}"
+                                    StampTaskNumber="{Binding StampTaskNumber}"
+                                    CellWidthPercent="{Binding CellWidth}"
+                                    CellHeightPercent="{Binding CellHeight}"
+                                    RowCellCount="{Binding RowCellCount}"
+                                    CellGapPercent="{Binding CellGap}"
+                                    ZoneAdded="OnEditorZoneAdded"
+                                    ZoneSelected="OnEditorZoneSelected" />
+                            </Grid>
+                        </Border>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <ui:TextBlock FontTypography="BodyStrong" Text="Параметры штампа" Margin="0,0,0,8" />
+                            <TextBlock Text="Имя поля" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
+                            <ui:TextBox Text="{Binding StampFieldName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
+                            <TextBlock Text="Тип поля" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
+                            <ComboBox ItemsSource="{Binding FieldTypeOptions}" SelectedItem="{Binding StampFieldType}" Margin="0,0,0,6" />
+                            <TextBlock Text="Номер задания" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
+                            <ui:TextBox Text="{Binding StampTaskNumber}" Margin="0,0,0,12" />
+
+                            <StackPanel Visibility="{Binding HasSelectedZone, Converter={StaticResource BoolVis}}">
+                                <Separator Margin="0,0,0,8" />
+                                <ui:TextBlock FontTypography="BodyStrong" Text="Выбранная зона" Margin="0,0,0,8" />
+                                <ui:Button Content="Применить параметры" Appearance="Primary" Margin="0,0,0,4"
+                                           Command="{Binding UpdateSelectedZoneCommand}" />
+                                <ui:Button Content="Удалить зону" Appearance="Danger"
+                                           Command="{Binding DeleteSelectedZoneCommand}" />
+                            </StackPanel>
+
+                            <Separator Margin="0,12,0,8" />
+                            <ui:TextBlock FontTypography="BodyStrong" Text="Зоны на странице" Margin="0,0,0,4" />
+                            <TextBlock Opacity="0.5" FontSize="11" Margin="0,0,0,4">
+                                <Run Text="Всего: " /><Run Text="{Binding CurrentZones.Count, Mode=OneWay}" />
+                            </TextBlock>
+                            <ListBox MaxHeight="240" ItemsSource="{Binding CurrentZones}" SelectedItem="{Binding SelectedZone}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock FontSize="11">
+                                            <Run Text="{Binding FieldName, Mode=OneWay}" />
+                                            <Run Text=" (" /><Run Text="{Binding FieldType, Mode=OneWay}" /><Run Text=")" />
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ===== Sub-tab 3: Обзор всех зон ===== -->
+            <TabItem Header="3. Обзор зон">
+                <DockPanel Margin="12">
+                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.5" FontSize="12" Margin="0,0,0,8"
+                               Text="Все размеченные зоны текущей страницы. Выберите страницу в списке слева." />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="200" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <DockPanel Grid.Column="0" Margin="0,0,12,0">
+                            <TextBlock DockPanel.Dock="Top" Text="Страницы" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <ListBox ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock FontSize="12">
+                                            <Run Text="{Binding BlankType, Mode=OneWay}" />
+                                            <Run Text=" (стр. " /><Run Text="{Binding PageNumber, Mode=OneWay}" /><Run Text=")" />
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                        <DataGrid Grid.Column="1" ItemsSource="{Binding CurrentZones}"
+                                  SelectedItem="{Binding SelectedZone}"
+                                  AutoGenerateColumns="False" IsReadOnly="True"
+                                  CanUserSortColumns="True" CanUserReorderColumns="True"
+                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Имя поля" Binding="{Binding FieldName}" Width="*" />
+                                <DataGridTextColumn Header="Тип" Binding="{Binding FieldType}" Width="100" />
+                                <DataGridTextColumn Header="Задание" Binding="{Binding TaskNumber}" Width="70" />
+                                <DataGridTextColumn Header="X %" Binding="{Binding X, StringFormat=F1}" Width="55" />
+                                <DataGridTextColumn Header="Y %" Binding="{Binding Y, StringFormat=F1}" Width="55" />
+                                <DataGridTextColumn Header="W %" Binding="{Binding Width, StringFormat=F1}" Width="55" />
+                                <DataGridTextColumn Header="H %" Binding="{Binding Height, StringFormat=F1}" Width="55" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</UserControl>

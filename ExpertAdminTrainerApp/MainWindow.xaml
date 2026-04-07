@@ -3,105 +3,85 @@
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                 xmlns:local="clr-namespace:ExpertAdminTrainerApp"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 xmlns:views="clr-namespace:ExpertAdminTrainerApp.Presentation.Views"
                  mc:Ignorable="d"
-                 Title="Демо WPF UI"
-                 Width="560"
-                 Height="680"
-                 MinWidth="420"
+                 Title="ExpertAdminTrainerApp"
+                 Width="1200"
+                 Height="820"
+                 MinWidth="980"
+                 MinHeight="620"
+                 Loaded="OnLoaded"
                  WindowStartupLocation="CenterScreen"
                  ExtendsContentIntoTitleBar="True"
                  WindowBackdropType="Mica">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis" />
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="Expert Admin — пробное окно" />
+        <ui:TitleBar Grid.Row="0" Title="Expert / Admin — EGE Trainer Platform" />
 
-        <ScrollViewer Grid.Row="1"
-                      VerticalScrollBarVisibility="Auto"
-                      Padding="16,12,16,20">
-            <StackPanel Orientation="Vertical">
+        <!-- Auth Bar -->
+        <ui:Card Grid.Row="1" Padding="14" Margin="16,0,16,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <WrapPanel VerticalAlignment="Center">
+                    <ui:TextBox Width="240" Margin="0,0,6,0" PlaceholderText="Email"
+                                Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" />
+                    <ui:PasswordBox x:Name="PwdBox" Width="180" Margin="0,0,6,0" PlaceholderText="Пароль"
+                                    Password="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <ui:Button Appearance="Primary" Margin="0,0,6,0" Content="Войти" Click="OnLoginClick" />
+                    <ui:Button Appearance="Secondary" Content="Выйти" Command="{Binding LogoutCommand}" />
+                </WrapPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0"
+                            Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolVis}}">
+                    <TextBlock Text="{Binding UserName}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Role, StringFormat=Роль: {0}}" Opacity="0.6" FontSize="12" />
+                </StackPanel>
+                <ui:ProgressRing Grid.Column="2" Width="24" Height="24" IsIndeterminate="{Binding IsBusy}" />
+            </Grid>
+        </ui:Card>
 
-                <ui:TextBlock Margin="0,0,0,16"
-                              FontTypography="BodyStrong"
-                              Text="Несколько контролов из WPF UI (lepoco): окно с Mica, карточки, кнопки, поле ввода, переключатель и индикатор загрузки."
-                              TextWrapping="Wrap"
-                              Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        <TextBlock Grid.Row="2" Text="{Binding StatusText}" Margin="20,6,20,4" Opacity="0.6" FontSize="12" />
 
-                <ui:Card Margin="0,0,0,16" Padding="16">
-                    <StackPanel>
-                        <ui:TextBlock Margin="0,0,0,10" FontTypography="Subtitle" Text="Кнопки" />
-                        <WrapPanel Orientation="Horizontal">
-                            <ui:Button Margin="0,0,8,8"
-                                       Appearance="Primary"
-                                       Click="OnDemoDialogClick"
-                                       Content="Диалог"
-                                       Icon="{ui:SymbolIcon Symbol=Chat24}" />
-                            <ui:Button Margin="0,0,8,8"
-                                       Appearance="Secondary"
-                                       Content="Вторичная"
-                                       Icon="{ui:SymbolIcon Symbol=Settings24}" />
-                            <ui:Button Margin="0,0,8,8"
-                                       Appearance="Light"
-                                       Content="Светлая"
-                                       Icon="{ui:SymbolIcon Symbol=Star24}" />
-                            <ui:Button Margin="0,0,8,8"
-                                       Appearance="Transparent"
-                                       Content="Прозрачная"
-                                       Icon="{ui:SymbolIcon Symbol=Info24}" />
-                        </WrapPanel>
-                    </StackPanel>
-                </ui:Card>
+        <!-- Main Workspace -->
+        <TabControl Grid.Row="3" Margin="16,0,16,16"
+                    Visibility="{Binding IsAdminOrExpert, Converter={StaticResource BoolVis}}">
 
-                <ui:Card Margin="0,0,0,16" Padding="16">
-                    <StackPanel>
-                        <ui:TextBlock Margin="0,0,0,8" FontTypography="Subtitle" Text="Поле ввода" />
-                        <ui:TextBox x:Name="DemoSearchBox"
-                                    PlaceholderText="Поиск или заметка…"
-                                    ClearButtonEnabled="True" />
-                    </StackPanel>
-                </ui:Card>
+            <TabItem Header="Заказы">
+                <views:OrdersView />
+            </TabItem>
 
-                <ui:Card Margin="0,0,0,16" Padding="16">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <ui:TextBlock FontTypography="Subtitle" Text="Переключатель" />
-                            <ui:TextBlock Margin="0,4,0,0"
-                                          FontTypography="Caption"
-                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                          Text="Стиль как в настройках Windows 11" />
-                        </StackPanel>
-                        <ui:ToggleSwitch Grid.Column="1"
-                                         VerticalAlignment="Center"
-                                         Content="Включено"
-                                         IsChecked="True" />
-                    </Grid>
-                </ui:Card>
+            <TabItem Header="Каталог и материалы"
+                     Visibility="{Binding IsAdmin, Converter={StaticResource BoolVis}}">
+                <views:CatalogView />
+            </TabItem>
 
-                <ui:Card Padding="16">
-                    <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
-                        <StackPanel Margin="0,0,24,0" VerticalAlignment="Center">
-                            <ui:TextBlock FontTypography="Subtitle" Text="Загрузка" />
-                            <ui:TextBlock Margin="0,4,0,0"
-                                          FontTypography="Caption"
-                                          Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                          Text="ProgressRing" />
-                        </StackPanel>
-                        <ui:ProgressRing Width="40"
-                                         Height="40"
-                                         IsIndeterminate="True" />
-                    </StackPanel>
-                </ui:Card>
+            <TabItem Header="Пользователи"
+                     Visibility="{Binding IsAdmin, Converter={StaticResource BoolVis}}">
+                <views:UsersView />
+            </TabItem>
 
-            </StackPanel>
-        </ScrollViewer>
+            <TabItem Header="Конструктор бланков"
+                     Visibility="{Binding IsAdmin, Converter={StaticResource BoolVis}}">
+                <views:ConstructorView DataContext="{Binding ConstructorVm, RelativeSource={RelativeSource AncestorType=Window}}" />
+            </TabItem>
+
+            <TabItem Header="Инструменты">
+                <views:ToolsView />
+            </TabItem>
+        </TabControl>
     </Grid>
 </ui:FluentWindow>
