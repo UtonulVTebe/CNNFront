@@ -40,10 +40,36 @@ public sealed class FileTokenStore : ITokenStore
         }
     }
 
+    private DateTime? _accessTokenExpiresAtUtc;
+
+    public DateTime? AccessTokenExpiresAtUtc
+    {
+        get => _accessTokenExpiresAtUtc;
+        set
+        {
+            _accessTokenExpiresAtUtc = value;
+            SaveToDisk();
+        }
+    }
+
+    private string? _accountEmail;
+
+    public string? AccountEmail
+    {
+        get => _accountEmail;
+        set
+        {
+            _accountEmail = value;
+            SaveToDisk();
+        }
+    }
+
     public void Clear()
     {
         _accessToken = null;
         _refreshToken = null;
+        _accessTokenExpiresAtUtc = null;
+        _accountEmail = null;
         if (File.Exists(_filePath))
         {
             File.Delete(_filePath);
@@ -65,6 +91,8 @@ public sealed class FileTokenStore : ITokenStore
             var payload = JsonSerializer.Deserialize<TokenPayload>(json);
             _accessToken = payload?.AccessToken;
             _refreshToken = payload?.RefreshToken;
+            _accessTokenExpiresAtUtc = payload?.AccessTokenExpiresAtUtc;
+            _accountEmail = payload?.AccountEmail;
         }
         catch
         {
@@ -77,7 +105,9 @@ public sealed class FileTokenStore : ITokenStore
         var payload = new TokenPayload
         {
             AccessToken = _accessToken,
-            RefreshToken = _refreshToken
+            RefreshToken = _refreshToken,
+            AccessTokenExpiresAtUtc = _accessTokenExpiresAtUtc,
+            AccountEmail = _accountEmail
         };
 
         var json = JsonSerializer.Serialize(payload);
@@ -90,5 +120,7 @@ public sealed class FileTokenStore : ITokenStore
     {
         public string? AccessToken { get; set; }
         public string? RefreshToken { get; set; }
+        public DateTime? AccessTokenExpiresAtUtc { get; set; }
+        public string? AccountEmail { get; set; }
     }
 }

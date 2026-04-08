@@ -8,41 +8,84 @@
 
     <Grid Margin="8">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="320" />
+            <ColumnDefinition Width="340" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- Left: Queue List -->
+        <!-- Left: Queue + My checking -->
         <DockPanel Grid.Column="0" Margin="0,0,8,0">
-            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                <ComboBox Width="200" Margin="0,0,0,6"
-                          ItemsSource="{Binding QueueStatusOptions}"
-                          SelectedItem="{Binding QueueStatusFilter}" />
-                <ui:Button Appearance="Primary" Content="Обновить" Command="{Binding LoadQueueCommand}" />
-            </StackPanel>
-            <ListBox ItemsSource="{Binding QueueOrders}" SelectedItem="{Binding SelectedQueueOrder}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Margin="4">
-                            <TextBlock FontWeight="SemiBold">
-                                <Run Text="Заказ #" /><Run Text="{Binding Id, Mode=OneWay}" />
-                            </TextBlock>
-                            <TextBlock Opacity="0.7" FontSize="12">
-                                <Run Text="CNN:" /><Run Text="{Binding CnnId, Mode=OneWay}" />
-                                <Run Text="  User:" /><Run Text="{Binding UserId, Mode=OneWay}" />
-                            </TextBlock>
-                            <TextBlock Text="{Binding Status}" FontSize="12"
-                                       Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+            <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.55" FontSize="11" Margin="0,0,0,8"
+                       Text="Очередь: без фильтра статуса — как на сервере (NoCheck и QueueForCheck). Для claim нужен профиль Expert_Info (иначе 403)." />
+            <TabControl>
+                <TabItem Header="Очередь">
+                    <DockPanel Margin="0,4,0,0">
+                        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                            <TextBlock Text="Фильтр статуса" Opacity="0.65" FontSize="11" Margin="0,0,0,4" />
+                            <ComboBox Margin="0,0,0,6"
+                                      ItemsSource="{Binding QueueStatusOptions}"
+                                      SelectedItem="{Binding QueueStatusFilter}" />
+                            <ui:Button Appearance="Primary" Content="Обновить очередь" Command="{Binding LoadQueueCommand}" />
                         </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                        <ListBox ItemsSource="{Binding QueueOrders}" SelectedItem="{Binding SelectedQueueOrder}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="4">
+                                        <TextBlock FontWeight="SemiBold">
+                                            <Run Text="Заказ #" /><Run Text="{Binding Id, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Opacity="0.7" FontSize="12">
+                                            <Run Text="CNN:" /><Run Text="{Binding CnnId, Mode=OneWay}" />
+                                            <Run Text="  User:" /><Run Text="{Binding UserId, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Status}" FontSize="12"
+                                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </TabItem>
+                <TabItem Header="Мои в работе">
+                    <DockPanel Margin="0,4,0,0">
+                        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                            <TextBlock Text="Период changedAt (необязательно)" Opacity="0.65" FontSize="11" Margin="0,0,0,4" />
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <DatePicker Grid.Column="0" Margin="0,0,4,0"
+                                            SelectedDate="{Binding ExpertMyOrdersFrom}" />
+                                <DatePicker Grid.Column="1" Margin="4,0,0,0"
+                                            SelectedDate="{Binding ExpertMyOrdersTo}" />
+                            </Grid>
+                            <ui:Button Appearance="Primary" Content="Обновить (Checking)" Command="{Binding LoadMyCheckingCommand}" />
+                        </StackPanel>
+                        <ListBox ItemsSource="{Binding MyCheckingOrders}" SelectedItem="{Binding SelectedQueueOrder}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="4">
+                                        <TextBlock FontWeight="SemiBold">
+                                            <Run Text="Заказ #" /><Run Text="{Binding Id, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Opacity="0.7" FontSize="12">
+                                            <Run Text="CNN:" /><Run Text="{Binding CnnId, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Text="На проверке" FontSize="12"
+                                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </TabItem>
+            </TabControl>
         </DockPanel>
 
         <!-- Right: Order Detail -->
         <Border Grid.Column="1" Padding="4">
             <Grid>
-                <TextBlock Text="Выберите заказ из списка слева"
+                <TextBlock Text="Выберите заказ в «Очереди» или «Мои в работе»"
                            VerticalAlignment="Center" HorizontalAlignment="Center"
                            Opacity="0.4" FontSize="14"
                            Visibility="{Binding HasNoSelectedOrder, Converter={StaticResource BoolVis}}" />
@@ -63,7 +106,7 @@
                                 <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
                             </Grid.RowDefinitions>
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Статус:" FontWeight="SemiBold" Margin="0,0,12,4"/>
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedQueueOrder.Status}" />
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedOrderStatusText}" />
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Студент:" FontWeight="SemiBold" Margin="0,0,12,4"/>
                             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedQueueOrder.UserId, StringFormat=User #{0}}" />
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Эксперт:" FontWeight="SemiBold" Margin="0,0,12,4"/>
@@ -71,7 +114,7 @@
                             <TextBlock Grid.Row="3" Grid.Column="0" Text="Причина отказа:" FontWeight="SemiBold" Margin="0,0,12,4"
                                        Visibility="{Binding SelectedQueueOrder.RejectionReason, Converter={StaticResource BoolVis}}" />
                             <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedQueueOrder.RejectionReason}"
-                                       Foreground="OrangeRed"
+                                       Foreground="OrangeRed" TextWrapping="Wrap"
                                        Visibility="{Binding SelectedQueueOrder.RejectionReason, Converter={StaticResource BoolVis}}" />
                             <TextBlock Grid.Row="4" Grid.Column="0" Text="Изменен:" FontWeight="SemiBold" Margin="0,0,12,4"/>
                             <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedQueueOrder.ChangedAt}" />
@@ -157,14 +200,17 @@
                                 <TextBlock Text="Действия эксперта" FontWeight="SemiBold" Margin="0,0,0,8" />
                                 <WrapPanel Margin="0,0,0,8">
                                     <ui:Button Appearance="Primary" Margin="0,0,8,0" Content="Взять в работу"
-                                               Command="{Binding ClaimSelectedOrderCommand}" />
+                                               Command="{Binding ClaimSelectedOrderCommand}"
+                                               IsEnabled="{Binding CanClaimSelectedOrder}" />
                                     <ui:Button Appearance="Danger" Content="Отклонить"
-                                               Command="{Binding BeginRejectOrderCommand}" />
+                                               Command="{Binding BeginRejectOrderCommand}"
+                                               IsEnabled="{Binding CanRejectSelectedOrder}" />
                                 </WrapPanel>
                                 <StackPanel Visibility="{Binding IsRejectingOrder, Converter={StaticResource BoolVis}}">
-                                    <ui:TextBox PlaceholderText="Причина отклонения (обязательно)"
+                                    <ui:TextBox PlaceholderText="Причина отклонения (обязательно, до 1024 символов)"
                                                 Text="{Binding RejectionReason, UpdateSourceTrigger=PropertyChanged}"
-                                                Margin="0,0,0,6" />
+                                                MaxLength="1024"
+                                                Margin="0,0,0,6" AcceptsReturn="True" Height="60" />
                                     <WrapPanel>
                                         <ui:Button Appearance="Danger" Content="Подтвердить отклонение" Margin="0,0,8,0"
                                                    Command="{Binding ConfirmRejectOrderCommand}" />
@@ -181,7 +227,8 @@
                                 <DockPanel Margin="0,0,0,6">
                                     <ui:Button DockPanel.Dock="Right" Appearance="Transparent"
                                                Content="Редактировать проверку"
-                                               Command="{Binding BeginEditReviewCommand}" />
+                                               Command="{Binding BeginEditReviewCommand}"
+                                               IsEnabled="{Binding CanOpenReviewEditor}" />
                                     <TextBlock Text="Проверка (Review)" FontWeight="SemiBold" VerticalAlignment="Center" />
                                 </DockPanel>
                                 <StackPanel Visibility="{Binding HasReview, Converter={StaticResource BoolVis}}">
@@ -193,11 +240,12 @@
                                     <ItemsControl ItemsSource="{Binding ReviewCriteria}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <TextBlock FontSize="12" Opacity="0.7" Margin="0,1">
+                                                <TextBlock FontSize="12" Opacity="0.7" Margin="0,1" TextWrapping="Wrap">
                                                     <Run Text="Зад. " /><Run Text="{Binding TaskNumber, Mode=OneWay}" />
                                                     <Run Text=" | " /><Run Text="{Binding CriterionCode, Mode=OneWay}" />
                                                     <Run Text=" = " /><Run Text="{Binding Score, Mode=OneWay}" />
                                                     <Run Text=" балл(ов)" />
+                                                    <Run Text=" — " /><Run Text="{Binding Comment, Mode=OneWay}" />
                                                 </TextBlock>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -217,8 +265,9 @@
                                             <TextBlock Grid.Column="0" Text="Итог (баллы):" VerticalAlignment="Center" Margin="0,0,8,0" />
                                             <ui:TextBox Grid.Column="1" Text="{Binding ReviewTotalScore}" />
                                         </Grid>
-                                        <ui:TextBox PlaceholderText="Общий комментарий (необязательно)"
+                                        <ui:TextBox PlaceholderText="Общий комментарий (до 2048 символов)"
                                                     Text="{Binding ReviewGeneralComment, UpdateSourceTrigger=PropertyChanged}"
+                                                    MaxLength="2048"
                                                     Margin="0,0,0,6" AcceptsReturn="True" Height="50" />
                                         <TextBlock Text="Критерии:" FontWeight="SemiBold" Margin="0,0,0,4" />
                                         <ItemsControl ItemsSource="{Binding ReviewCriteria}">
@@ -227,18 +276,20 @@
                                                     <Grid Margin="0,2">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="60" />
-                                                            <ColumnDefinition Width="80" />
+                                                            <ColumnDefinition Width="90" />
                                                             <ColumnDefinition Width="60" />
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
                                                         <ui:TextBox Grid.Column="0" Margin="0,0,4,0" PlaceholderText="Зад."
                                                                     Text="{Binding TaskNumber, UpdateSourceTrigger=PropertyChanged}" />
-                                                        <ui:TextBox Grid.Column="1" Margin="0,0,4,0" PlaceholderText="Критерий"
+                                                        <ui:TextBox Grid.Column="1" Margin="0,0,4,0" PlaceholderText="Код"
+                                                                    MaxLength="32"
                                                                     Text="{Binding CriterionCode, UpdateSourceTrigger=PropertyChanged}" />
                                                         <ui:TextBox Grid.Column="2" Margin="0,0,4,0" PlaceholderText="Балл"
                                                                     Text="{Binding Score, UpdateSourceTrigger=PropertyChanged}" />
                                                         <ui:TextBox Grid.Column="3" Margin="0,0,4,0" PlaceholderText="Комментарий"
+                                                                    MaxLength="1024"
                                                                     Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}" />
                                                         <ui:Button Grid.Column="4" Appearance="Danger" Content="✕"
                                                                    Command="{Binding DataContext.RemoveReviewCriterionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"

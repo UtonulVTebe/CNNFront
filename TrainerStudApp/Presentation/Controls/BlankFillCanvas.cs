@@ -13,6 +13,15 @@ namespace TrainerStudApp.Presentation.Controls;
 /// </summary>
 public class BlankFillCanvas : BlankDisplayCanvas
 {
+    private static readonly Brush SubtleFieldBackground = new SolidColorBrush(Color.FromArgb(15, 245, 245, 248));
+    private static readonly Brush InkFieldBackground = new SolidColorBrush(Color.FromArgb(12, 245, 245, 248));
+
+    static BlankFillCanvas()
+    {
+        if (SubtleFieldBackground is SolidColorBrush sb) sb.Freeze();
+        if (InkFieldBackground is SolidColorBrush ib) ib.Freeze();
+    }
+
     public static readonly DependencyProperty PageIndexProperty =
         DependencyProperty.Register(nameof(PageIndex), typeof(int), typeof(BlankFillCanvas),
             new PropertyMetadata(0, (d, _) => { if (d is BlankFillCanvas c) c.ScheduleRebuild(); }));
@@ -27,6 +36,8 @@ public class BlankFillCanvas : BlankDisplayCanvas
 
     public BlankFillCanvas()
     {
+        UseLayoutRounding = true;
+        SnapsToDevicePixels = true;
         Panel.SetZIndex(_inputLayer, 1000);
         Children.Add(_inputLayer);
         Loaded += (_, _) => ScheduleRebuild();
@@ -145,7 +156,7 @@ public class BlankFillCanvas : BlankDisplayCanvas
             for (var i = 0; i < n; i++)
             {
                 var subKey = $"{key}|{i}";
-                var tb = CreateCharBox(zone, subKey, sink);
+                var tb = CreateCharBox(zone, subKey, sink, ph, cellW);
                 _inputLayer.Children.Add(tb);
                 Canvas.SetLeft(tb, px + i * cellW);
                 Canvas.SetTop(tb, py);
@@ -155,7 +166,7 @@ public class BlankFillCanvas : BlankDisplayCanvas
         }
         else
         {
-            var tb = CreateCharBox(zone, key, sink);
+            var tb = CreateCharBox(zone, key, sink, ph, pw);
             _inputLayer.Children.Add(tb);
             Canvas.SetLeft(tb, px);
             Canvas.SetTop(tb, py);
@@ -164,20 +175,41 @@ public class BlankFillCanvas : BlankDisplayCanvas
         }
     }
 
-    private TextBox CreateCharBox(ZoneDefinition zone, string key, IZoneAnswerSink? sink)
+    private static void ApplyEditableTextMetrics(TextBox tb, double cellHeightPx, double cellWidthPx,
+        VerticalAlignment contentV, HorizontalAlignment contentH)
+    {
+        tb.MinHeight = 0;
+        tb.Padding = new Thickness(0);
+        tb.VerticalAlignment = VerticalAlignment.Top;
+        tb.HorizontalAlignment = HorizontalAlignment.Left;
+        tb.VerticalContentAlignment = contentV;
+        tb.HorizontalContentAlignment = contentH;
+        TextOptions.SetTextFormattingMode(tb, TextFormattingMode.Display);
+        TextOptions.SetTextHintingMode(tb, TextHintingMode.Fixed);
+        SpellCheck.SetIsEnabled(tb, false);
+        tb.SnapsToDevicePixels = true;
+        var h = Math.Max(4, cellHeightPx);
+        var w = Math.Max(4, cellWidthPx);
+        var fs = Math.Clamp(Math.Min(h * 0.72, w * 0.95), 8, Math.Max(8, h - 3));
+        tb.FontSize = fs;
+    }
+
+    private TextBox CreateCharBox(ZoneDefinition zone, string key, IZoneAnswerSink? sink, double cellHeightPx,
+        double cellWidthPx)
     {
         var tb = new TextBox
         {
-            FontSize = Math.Clamp(Math.Min(zone.Height * 0.35, 18), 10, 22),
-            VerticalContentAlignment = VerticalAlignment.Center,
-            HorizontalContentAlignment = HorizontalAlignment.Center,
             MaxLength = 1,
             Text = sink?.GetAnswer(key) ?? string.Empty,
-            Padding = new Thickness(0),
-            BorderThickness = new Thickness(0.5),
-            Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
-            Tag = key
+            BorderThickness = new Thickness(0),
+            Background = SubtleFieldBackground,
+            Foreground = SystemColors.ControlTextBrush,
+            CaretBrush = SystemColors.ControlTextBrush,
+            Tag = key,
+            TextAlignment = TextAlignment.Center
         };
+        ApplyEditableTextMetrics(tb, cellHeightPx, cellWidthPx, VerticalAlignment.Center,
+            HorizontalAlignment.Center);
         tb.TextChanged += (_, _) =>
         {
             var t = tb.Text.Replace("\r", "").Replace("\n", "");
@@ -202,15 +234,19 @@ public class BlankFillCanvas : BlankDisplayCanvas
         var key = AnswerKey(pageIdx, zone.Id);
         var tb = new TextBox
         {
-            FontSize = Math.Clamp(Math.Min(zone.Height * 0.12, 14), 9, 18),
             TextWrapping = multiline ? TextWrapping.Wrap : TextWrapping.NoWrap,
             AcceptsReturn = multiline,
             VerticalScrollBarVisibility = multiline ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled,
             Text = sink?.GetAnswer(key) ?? string.Empty,
-            BorderThickness = new Thickness(0.5),
-            Background = new SolidColorBrush(Color.FromArgb(35, 200, 230, 255)),
+            BorderThickness = new Thickness(0),
+            Background = SubtleFieldBackground,
+            Foreground = SystemColors.ControlTextBrush,
+            CaretBrush = SystemColors.ControlTextBrush,
             Tag = key
         };
+        ApplyEditableTextMetrics(tb, ph, pw,
+            multiline ? VerticalAlignment.Top : VerticalAlignment.Center,
+            HorizontalAlignment.Left);
         tb.TextChanged += (_, _) => sink?.SetAnswer(key, string.IsNullOrEmpty(tb.Text) ? null : tb.Text);
         _inputLayer.Children.Add(tb);
         Canvas.SetLeft(tb, px);
@@ -234,7 +270,7 @@ public class BlankFillCanvas : BlankDisplayCanvas
             for (var c = 0; c < cols; c++)
             {
                 var subKey = $"{baseKey}|{idx++}";
-                var tb = CreateCharBox(zone, subKey, sink);
+                var tb = CreateCharBox(zone, subKey, sink, ch, cw);
                 _inputLayer.Children.Add(tb);
                 Canvas.SetLeft(tb, px + c * cw);
                 Canvas.SetTop(tb, py + r * ch);
@@ -250,7 +286,7 @@ public class BlankFillCanvas : BlankDisplayCanvas
         var key = AnswerKey(pageIdx, zone.Id);
         var ink = new InkCanvas
         {
-            Background = new SolidColorBrush(Color.FromArgb(25, 255, 200, 200)),
+            Background = InkFieldBackground,
             Tag = key
         };
         _inputLayer.Children.Add(ink);

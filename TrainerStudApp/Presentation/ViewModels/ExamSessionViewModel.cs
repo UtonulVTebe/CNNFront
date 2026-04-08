@@ -14,32 +14,68 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
 {
     private readonly Dictionary<string, string> _answers = new(StringComparer.Ordinal);
     private string? _templateJsonMaterialUrl;
+    private BlankPageDefinition? _answerSheet2Prototype;
+    private int _baseAnswerSheet2Count;
+    private bool _extraAnswerSheet2Used;
+
+    /// <summary>Срабатывает после успешной или пустой автопроверки — UI может переключить вкладку «Результаты».</summary>
+    public event EventHandler? GradingCompleted;
 
     [ObservableProperty] private int currentPageIndex;
 
     [ObservableProperty] private bool hasGraded;
 
+    [ObservableProperty] private string currentStepLabel = string.Empty;
+
+    [ObservableProperty] private string resultSummaryText = string.Empty;
+
+    /// <summary>Масштаб панели бланка (1.0 = 100%).</summary>
+    [ObservableProperty] private double blankPanelZoom = 1.0;
+
     public ObservableCollection<TaskGradeResult> GradingResults { get; } = [];
+
+    public bool CanAddAnswerSheet2 =>
+        CurrentTemplate is not null
+        && _answerSheet2Prototype is not null
+        && !_extraAnswerSheet2Used;
 
     public void SetTemplate(BlankTemplateDefinition template, string? templateJsonMaterialUrl)
     {
         _templateJsonMaterialUrl = templateJsonMaterialUrl;
         HasGraded = false;
+        ResultSummaryText = string.Empty;
         GradingResults.Clear();
         _answers.Clear();
-        CurrentTemplate = template;
-        if (template.Pages.Count > 0 && SelectedPage is not null)
+        _extraAnswerSheet2Used = false;
+
+        var working = ExamTemplatePageCloner.CreateExamWorkingCopy(
+            template,
+            out _answerSheet2Prototype,
+            out _baseAnswerSheet2Count);
+
+        CurrentTemplate = working;
+        if (working.Pages.Count > 0 && SelectedPage is not null)
             CurrentPageIndex = Pages.IndexOf(SelectedPage);
+
+        UpdateStepLabel();
+        OnPropertyChanged(nameof(CanAddAnswerSheet2));
     }
 
     public void ClearSession()
     {
+        _answerSheet2Prototype = null;
+        _baseAnswerSheet2Count = 0;
+        _extraAnswerSheet2Used = false;
         CurrentTemplate = null;
         _answers.Clear();
         GradingResults.Clear();
         HasGraded = false;
+        ResultSummaryText = string.Empty;
+        CurrentStepLabel = string.Empty;
         _templateJsonMaterialUrl = null;
         CurrentPageIndex = 0;
+        BlankPanelZoom = 1.0;
+        OnPropertyChanged(nameof(CanAddAnswerSheet2));
     }
 
     public string? GetAnswer(string key) =>
@@ -60,8 +96,43 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
         else
             CurrentPageIndex = 0;
 
+        UpdateStepLabel();
         OnPropertyChanged(nameof(CanGoPrevious));
         OnPropertyChanged(nameof(CanGoNext));
+        OnPropertyChanged(nameof(CanAddAnswerSheet2));
+    }
+
+    private void UpdateStepLabel()
+    {
+        if (SelectedPage is null || Pages.Count == 0)
+        {
+            CurrentStepLabel = string.Empty;
+            return;
+        }
+
+        var reg = Pages.Count(p => p.BlankType == BlankType.Registration);
+        var a1 = Pages.Count(p => p.BlankType == BlankType.AnswerSheet1);
+        var as2List = Pages.Where(p => p.BlankType == BlankType.AnswerSheet2).ToList();
+        var sp = SelectedPage;
+
+        if (sp.BlankType == BlankType.Registration)
+        {
+            var i = Pages.Where(p => p.BlankType == BlankType.Registration).ToList().IndexOf(sp) + 1;
+            CurrentStepLabel = $"Регистрация — страница {i} из {reg}";
+        }
+        else if (sp.BlankType == BlankType.AnswerSheet1)
+        {
+            var i = Pages.Where(p => p.BlankType == BlankType.AnswerSheet1).ToList().IndexOf(sp) + 1;
+            CurrentStepLabel = $"Бланк ответов №1 — страница {i} из {a1}";
+        }
+        else if (sp.BlankType == BlankType.AnswerSheet2)
+        {
+            var i = as2List.IndexOf(sp) + 1;
+            var extra = i > _baseAnswerSheet2Count ? " (доп.)" : string.Empty;
+            CurrentStepLabel = $"Бланк ответов №2 — лист {i} из {as2List.Count}{extra}";
+        }
+        else
+            CurrentStepLabel = $"Страница {Pages.IndexOf(sp) + 1} из {Pages.Count}";
     }
 
     protected override void OnPageImageRequired(BlankPageDefinition page)
@@ -194,13 +265,36 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
     }
 
     [RelayCommand]
+    private void AddAnswerSheet2()
+    {
+        var proto = _answerSheet2Prototype;
+        var tmpl = CurrentTemplate;
+        if (proto is null || tmpl is null)
+            return;
+
+        var clone = ExamTemplatePageCloner.ClonePageWithNewZoneIds(proto);
+        var maxNum = tmpl.Pages.Count > 0
+            ? tmpl.Pages.Max(p => p.PageNumber)
+            : 0;
+        clone.PageNumber = maxNum + 1;
+
+        tmpl.Pages.Add(clone);
+        Pages.Add(clone);
+        SelectedPage = clone;
+        _extraAnswerSheet2Used = true;
+        OnPropertyChanged(nameof(CanAddAnswerSheet2));
+    }
+
+    [RelayCommand]
     private void FinishAndGrade()
     {
         var template = CurrentTemplate;
         if (template is null || template.AutoAnswers.Count == 0)
         {
             ViewerStatus = "Нет эталонных ответов (autoAnswers) в шаблоне.";
+            ResultSummaryText = ViewerStatus;
             HasGraded = true;
+            GradingCompleted?.Invoke(this, EventArgs.Empty);
             return;
         }
 
@@ -211,6 +305,8 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
 
         var ok = GradingResults.Count(x => x.IsCorrect);
         ViewerStatus = $"Автопроверка: {ok} из {GradingResults.Count} заданий с эталоном.";
+        ResultSummaryText = $"{ViewerStatus} Верно: {ok}, всего с эталоном: {GradingResults.Count}.";
         HasGraded = true;
+        GradingCompleted?.Invoke(this, EventArgs.Empty);
     }
 }

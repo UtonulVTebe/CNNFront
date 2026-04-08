@@ -12,8 +12,12 @@ public interface IApiClient
     Task<IReadOnlyList<OrderAnswerReadDto>> GetMineAsync(CancellationToken ct = default);
     Task<PaginatedResponse<OrderAnswerReadDto>> GetOrdersPagedAsync(
         int? cnnId = null, int? studentId = null, int? expertId = null,
-        OrderAnswerStatus? status = null, int page = 1, int pageSize = 25,
+        OrderAnswerStatus? status = null, DateTime? from = null, DateTime? to = null,
+        int page = 1, int pageSize = 25,
         CancellationToken ct = default);
+
+    Task<OrderAnswerReadDto> GetOrderByIdAsync(int id, CancellationToken ct = default);
+
     Task<OrderAnswerReadDto> ClaimOrderAsync(int id, CancellationToken ct = default);
     Task<OrderAnswerReadDto> UpdateOrderAsync(int id, OrderAnswerUpdateDto dto, CancellationToken ct = default);
     Task RejectOrderAsync(int id, string reason, CancellationToken ct = default);

@@ -223,7 +223,9 @@ public sealed class TransactionReadDto
 
 public sealed class ApiErrorDto
 {
+    [JsonPropertyName("message")]
     public string? Message { get; set; }
+
     public string? Title { get; set; }
 
     [JsonPropertyName("detail")]

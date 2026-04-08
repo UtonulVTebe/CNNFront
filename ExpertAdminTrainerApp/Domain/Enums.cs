@@ -15,7 +15,8 @@ public enum OrderAnswerStatus
     QueueForCheck = 2,
     Checking = 3,
     Checked = 4,
-    Rejected = 5
+    /// <summary>Отклонено экспертом (сервер: RejectedByExpert).</summary>
+    RejectedByExpert = 5
 }
 
 public enum PlatformTransactionType

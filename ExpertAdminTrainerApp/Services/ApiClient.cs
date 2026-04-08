@@ -40,7 +40,8 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
 
     public Task<PaginatedResponse<OrderAnswerReadDto>> GetOrdersPagedAsync(
         int? cnnId = null, int? studentId = null, int? expertId = null,
-        OrderAnswerStatus? status = null, int page = 1, int pageSize = 25,
+        OrderAnswerStatus? status = null, DateTime? from = null, DateTime? to = null,
+        int page = 1, int pageSize = 25,
         CancellationToken ct = default)
     {
         var qs = BuildQueryString(
@@ -48,10 +49,15 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
             ("studentId", studentId?.ToString()),
             ("expertId", expertId?.ToString()),
             ("status", status is null ? null : ((int)status.Value).ToString()),
+            ("from", from?.ToString("O")),
+            ("to", to?.ToString("O")),
             ("page", page.ToString()),
             ("pageSize", pageSize.ToString()));
         return SendWithAuthAsync<PaginatedResponse<OrderAnswerReadDto>>(HttpMethod.Get, $"api/OrderAnswers{qs}", null, ct);
     }
+
+    public Task<OrderAnswerReadDto> GetOrderByIdAsync(int id, CancellationToken ct = default) =>
+        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Get, $"api/OrderAnswers/{id}", null, ct);
 
     public Task<OrderAnswerReadDto> ClaimOrderAsync(int id, CancellationToken ct = default) =>
         SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Post, $"api/OrderAnswers/{id}/claim", null, ct);
@@ -69,7 +75,7 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
     {
         try
         {
-            return await SendWithAuthAsync<ReviewReadDto>(HttpMethod.Get, $"api/orderanswers/{orderAnswerId}/review", null, ct);
+            return await SendWithAuthAsync<ReviewReadDto>(HttpMethod.Get, $"api/OrderAnswers/{orderAnswerId}/review", null, ct);
         }
         catch
         {
@@ -78,10 +84,10 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
     }
 
     public Task<ReviewReadDto> CreateReviewAsync(int orderAnswerId, ReviewWriteDto dto, CancellationToken ct = default) =>
-        SendWithAuthAsync<ReviewReadDto>(HttpMethod.Post, $"api/orderanswers/{orderAnswerId}/review", ToJsonContent(dto), ct);
+        SendWithAuthAsync<ReviewReadDto>(HttpMethod.Post, $"api/OrderAnswers/{orderAnswerId}/review", ToJsonContent(dto), ct);
 
     public Task<ReviewReadDto> UpdateReviewAsync(int orderAnswerId, ReviewWriteDto dto, CancellationToken ct = default) =>
-        SendWithAuthAsync<ReviewReadDto>(HttpMethod.Put, $"api/orderanswers/{orderAnswerId}/review", ToJsonContent(dto), ct);
+        SendWithAuthAsync<ReviewReadDto>(HttpMethod.Put, $"api/OrderAnswers/{orderAnswerId}/review", ToJsonContent(dto), ct);
 
     // ===== CNN =====
 

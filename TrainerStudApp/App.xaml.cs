@@ -53,6 +53,7 @@ public partial class App : Application
         services.AddSingleton<BlankTemplateService>();
         services.AddSingleton<BlankTemplateSyncService>();
         services.AddSingleton<ExamSessionViewModel>();
+        services.AddSingleton<StudentOrdersViewModel>();
         services.AddSingleton<StudentMainViewModel>();
         services.AddSingleton<MainWindow>();
     }

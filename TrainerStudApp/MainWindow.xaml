@@ -5,11 +5,12 @@
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  xmlns:controls="clr-namespace:TrainerStudApp.Presentation.Controls"
+                 xmlns:converters="clr-namespace:TrainerStudApp.Presentation.Converters"
                  xmlns:local="clr-namespace:TrainerStudApp"
                  mc:Ignorable="d"
                  Title="TrainerStud — тренировка ЕГЭ"
-                 Width="1180"
-                 Height="780"
+                 Width="1280"
+                 Height="820"
                  MinWidth="960"
                  MinHeight="600"
                  WindowStartupLocation="CenterScreen"
@@ -17,11 +18,13 @@
                  WindowBackdropType="Mica">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolVis" />
+        <converters:InverseBooleanToVisibilityConverter x:Key="GuestVis" />
+        <converters:OrderAnswerStatusConverter x:Key="OrderStatusConv" />
+        <converters:IndexMatchToVisibilityConverter x:Key="NavSectionVis" />
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -29,33 +32,118 @@
 
         <ui:TitleBar Grid.Row="0" Title="Ученик — материалы и бланки" />
 
-        <ui:Card Grid.Row="1" Padding="14" Margin="16,0,16,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <WrapPanel VerticalAlignment="Center">
-                    <ui:TextBox x:Name="EmailBox" Width="240" Margin="0,0,6,0" PlaceholderText="Email"
-                                Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" />
-                    <ui:PasswordBox x:Name="PwdBox" Width="180" Margin="0,0,6,0" PlaceholderText="Пароль" />
-                    <ui:Button Appearance="Primary" Margin="0,0,6,0" Content="Войти" Click="OnLoginClick" />
-                    <ui:Button Appearance="Secondary" Content="Выйти" Command="{Binding LogoutCommand}" />
-                </WrapPanel>
-                <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="12,0"
-                           Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolVis}}"
-                           Text="{Binding UserDisplay}" FontWeight="SemiBold" />
-                <ui:ProgressRing Grid.Column="2" Width="24" Height="24" IsIndeterminate="{Binding IsBusy}" />
-            </Grid>
-        </ui:Card>
+        <Grid Grid.Row="1" Margin="20,8,20,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="{Binding StatusText}" VerticalAlignment="Center"
+                       Opacity="0.65" FontSize="12" TextWrapping="Wrap" />
+            <ui:ProgressRing Grid.Column="1" Width="22" Height="22" Margin="12,0,0,0"
+                             IsIndeterminate="{Binding IsBusy}" />
+        </Grid>
 
-        <TextBlock Grid.Row="2" Text="{Binding StatusText}" Margin="20,6,20,4" Opacity="0.65" FontSize="12" />
+        <Grid x:Name="MainShell" Grid.Row="2" Margin="12,0,12,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="208" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-        <TabControl Grid.Row="3" Margin="16,0,16,16"
-                    Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolVis}}">
-            <TabItem Header="Каталог">
-                <Grid Margin="4">
+            <Border Grid.Column="0" Margin="0,0,12,0" Padding="6,8" CornerRadius="8"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                    VerticalAlignment="Stretch"
+                    Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                <ListBox x:Name="NavList" BorderThickness="0" Background="Transparent"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         SelectedIndex="{Binding SelectedNavIndex, Mode=TwoWay}"
+                         SelectionChanged="NavList_OnSelectionChanged">
+                    <ListBox.Resources>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="12,9" />
+                            <Setter Property="Margin" Value="0,2" />
+                            <Setter Property="HorizontalContentAlignment" Value="Left" />
+                            <Setter Property="FontSize" Value="13" />
+                        </Style>
+                    </ListBox.Resources>
+                    <ListBoxItem Content="Профиль" />
+                    <ListBoxItem Content="Каталог" IsEnabled="{Binding IsAuthenticated}" />
+                    <ListBoxItem Content="Экзамен" IsEnabled="{Binding IsAuthenticated}" />
+                    <ListBoxItem Content="Результаты" IsEnabled="{Binding IsAuthenticated}" />
+                    <ListBoxItem Content="Проверки" IsEnabled="{Binding IsAuthenticated}" />
+                </ListBox>
+            </Border>
+
+            <Border Grid.Column="1" Padding="12,8" CornerRadius="8"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                    VerticalAlignment="Stretch">
+                <Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0"
+                                  Visibility="{Binding SelectedNavIndex, Converter={StaticResource NavSectionVis}, ConverterParameter=0}">
+                    <Grid MinHeight="420">
+                        <StackPanel MaxWidth="520" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                    Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolVis}}">
+                            <TextBlock FontWeight="SemiBold" FontSize="15" Text="Аккаунт" />
+                            <TextBlock Margin="0,6,0,0" Text="{Binding UserDisplay}" FontSize="14" />
+                            <ui:Button Margin="0,12,0,0" HorizontalAlignment="Left" Appearance="Secondary"
+                                       Content="Выйти" Command="{Binding LogoutCommand}" />
+                            <TextBlock Margin="0,20,0,0" Opacity="0.7" TextWrapping="Wrap"
+                                       Text="Заказы на проверку развёрнутой части — в разделе «Проверки» в меню слева." />
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsAuthenticated, Converter={StaticResource GuestVis}}"
+                                    VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <ui:Card Padding="28" MaxWidth="440" HorizontalAlignment="Center">
+                                <StackPanel>
+                                    <TextBlock Text="TrainerStud" FontSize="24" FontWeight="SemiBold" />
+                                    <TextBlock Margin="0,6,0,0" Opacity="0.75" TextWrapping="Wrap"
+                                               Text="Вход для тренировки ЕГЭ и заказа проверки у экспертов." />
+                                    <TextBlock Margin="0,20,0,4" FontWeight="SemiBold" Text="Email" />
+                                    <ui:TextBox PlaceholderText="you@school.ru"
+                                                Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,12,0,4" FontWeight="SemiBold" Text="Пароль" />
+                                    <PasswordBox x:Name="ProfileLoginPwd" />
+                                    <ui:Button Margin="0,16,0,0" HorizontalAlignment="Stretch" Appearance="Primary"
+                                               Content="Войти" Click="OnProfileLoginClick" />
+                                    <Separator Margin="0,22,0,22" />
+                                    <TextBlock FontWeight="SemiBold" Text="Регистрация" />
+                                    <TextBlock Margin="0,4,0,0" Opacity="0.7" FontSize="12" TextWrapping="Wrap"
+                                               Text="Код на почту, затем имя и пароль." />
+                                    <ui:TextBox Margin="0,8,0,0" PlaceholderText="Email"
+                                                Text="{Binding RegisterEmail, UpdateSourceTrigger=PropertyChanged}" />
+                                    <ui:Button Margin="0,8,0,0" HorizontalAlignment="Left" Appearance="Secondary"
+                                               Content="Отправить код" Command="{Binding RegisterSendCodeCommand}" />
+                                    <StackPanel Margin="0,10,0,0"
+                                                Visibility="{Binding RegisterAwaitingCode, Converter={StaticResource BoolVis}}">
+                                        <ui:TextBox PlaceholderText="Код из письма"
+                                                    Text="{Binding RegisterCode, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ui:TextBox Margin="0,8,0,0" PlaceholderText="Имя"
+                                                    Text="{Binding RegisterName, UpdateSourceTrigger=PropertyChanged}" />
+                                        <PasswordBox x:Name="RegisterPwd" Margin="0,8,0,0" />
+                                        <ui:Button Margin="0,10,0,0" Appearance="Primary"
+                                                   Content="Подтвердить" Click="OnRegisterConfirmClick" />
+                                    </StackPanel>
+                                    <Separator Margin="0,20,0,20" />
+                                    <TextBlock FontWeight="SemiBold" Text="Сброс пароля" />
+                                    <ui:TextBox Margin="0,8,0,0" PlaceholderText="Email"
+                                                Text="{Binding ResetEmail, UpdateSourceTrigger=PropertyChanged}" />
+                                    <ui:Button Margin="0,8,0,0" HorizontalAlignment="Left" Appearance="Secondary"
+                                               Content="Код на почту" Command="{Binding PasswordResetSendCodeCommand}" />
+                                    <StackPanel Margin="0,10,0,0"
+                                                Visibility="{Binding ResetAwaitingCode, Converter={StaticResource BoolVis}}">
+                                        <ui:TextBox PlaceholderText="Код"
+                                                    Text="{Binding ResetCode, UpdateSourceTrigger=PropertyChanged}" />
+                                        <PasswordBox x:Name="ResetNewPwd" Margin="0,8,0,0" />
+                                        <ui:Button Margin="0,10,0,0" Appearance="Primary"
+                                                   Content="Новый пароль" Click="OnPasswordResetConfirmClick" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </ui:Card>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+
+                    <Grid Margin="4"
+                          Visibility="{Binding SelectedNavIndex, Converter={StaticResource NavSectionVis}, ConverterParameter=1}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="280" />
                         <ColumnDefinition Width="*" />
@@ -128,52 +216,309 @@
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
-            </TabItem>
 
-            <TabItem Header="Экзамен">
-                <Grid Margin="4">
+                    <Grid Margin="4"
+                          Visibility="{Binding SelectedNavIndex, Converter={StaticResource NavSectionVis}, ConverterParameter=2}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="220" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="*" MinWidth="360" />
+                    </Grid.ColumnDefinitions>
+
+                    <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch"
+                                  Background="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                  ShowsPreview="False" />
+
+                    <!-- КИМ: список и превью -->
+                    <Grid Grid.Column="0" Margin="0,0,8,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" FontWeight="SemiBold" Margin="0,0,0,6" Text="Задания (КИМ)" />
+                        <ListBox Grid.Row="1" MaxHeight="140" Margin="0,0,0,6"
+                                 ItemsSource="{Binding KimMaterials}"
+                                 SelectedItem="{Binding SelectedKimPreviewMaterial, Mode=TwoWay}"
+                                 DisplayMemberPath="Title" />
+                        <DockPanel Grid.Row="2" Margin="0,0,0,6">
+                            <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,8,0"
+                                       Text="Масштаб:" />
+                            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0" MinWidth="44"
+                                       Text="{Binding KimPanelZoom, StringFormat={}{0:P0}}" />
+                            <Slider Minimum="0.5" Maximum="2.5" SmallChange="0.05" LargeChange="0.15"
+                                    Value="{Binding KimPanelZoom, Mode=TwoWay}" />
+                        </DockPanel>
+                        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,6">
+                            <ui:Button Margin="0,0,8,0" Content="Во внешней программе"
+                                       Command="{Binding OpenKimCommand}"
+                                       CommandParameter="{Binding SelectedKimPreviewMaterial}" />
+                        </StackPanel>
+                        <Border Grid.Row="4" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                                CornerRadius="4" ClipToBounds="True">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                                <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top">
+                                    <Grid>
+                                        <Grid.LayoutTransform>
+                                            <ScaleTransform ScaleX="{Binding KimPanelZoom}"
+                                                            ScaleY="{Binding KimPanelZoom}" />
+                                        </Grid.LayoutTransform>
+                                        <Image Source="{Binding KimPreviewImage}" Stretch="None" />
+                                    </Grid>
+                                    <TextBlock Margin="8" TextWrapping="Wrap" Opacity="0.85"
+                                               Text="{Binding KimPreviewHint}" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+
+                    <!-- Бланки -->
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <StackPanel Grid.Row="0" Margin="0,0,0,6">
+                                <TextBlock FontWeight="SemiBold" Text="Бланки" />
+                                <TextBlock TextWrapping="Wrap" Text="{Binding Exam.CurrentStepLabel}" />
+                            </StackPanel>
+                            <DockPanel Grid.Row="1" Margin="0,0,0,6">
+                                <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,8,0"
+                                           Text="Масштаб бланка:" />
+                                <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0" MinWidth="44"
+                                           Text="{Binding Exam.BlankPanelZoom, StringFormat={}{0:P0}}" />
+                                <Slider Minimum="0.5" Maximum="2.5" SmallChange="0.05" LargeChange="0.15"
+                                        Value="{Binding Exam.BlankPanelZoom, Mode=TwoWay}" />
+                            </DockPanel>
+                            <WrapPanel Grid.Row="2" Orientation="Horizontal">
+                                <ComboBox Width="220" Margin="0,0,8,4"
+                                          ItemsSource="{Binding Exam.Pages}"
+                                          SelectedItem="{Binding Exam.SelectedPage, Mode=TwoWay}"
+                                          ToolTip="Быстрый переход к странице">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock>
+                                                <Run Text="{Binding BlankType, Mode=OneWay}" />
+                                                <Run Text=" · стр. " />
+                                                <Run Text="{Binding PageNumber, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <ui:Button Margin="0,0,6,4" Content="Назад"
+                                           Command="{Binding Exam.GoPreviousPageCommand}"
+                                           IsEnabled="{Binding Exam.CanGoPrevious}" />
+                                <ui:Button Margin="0,0,6,4" Content="Вперёд"
+                                           Command="{Binding Exam.GoNextPageCommand}"
+                                           IsEnabled="{Binding Exam.CanGoNext}" />
+                                <ui:Button Margin="0,0,6,4" Appearance="Secondary"
+                                           Content="Ещё бланк №2"
+                                           Command="{Binding Exam.AddAnswerSheet2Command}"
+                                           IsEnabled="{Binding Exam.CanAddAnswerSheet2}" />
+                                <ui:Button Margin="0,0,6,4" Appearance="Primary"
+                                           Content="Завершить и проверить"
+                                           Command="{Binding Exam.FinishAndGradeCommand}" />
+                            </WrapPanel>
+                        </Grid>
+
+                        <Border Grid.Row="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                BorderThickness="1" CornerRadius="4" ClipToBounds="True"
+                                UseLayoutRounding="True" SnapsToDevicePixels="True">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                          UseLayoutRounding="True">
+                                <Grid HorizontalAlignment="Left" VerticalAlignment="Top"
+                                      UseLayoutRounding="True" SnapsToDevicePixels="True">
+                                    <Grid.LayoutTransform>
+                                        <ScaleTransform ScaleX="{Binding Exam.BlankPanelZoom}"
+                                                        ScaleY="{Binding Exam.BlankPanelZoom}" />
+                                    </Grid.LayoutTransform>
+                                    <controls:BlankFillCanvas x:Name="FillCanvas"
+                                                              MinWidth="400" MinHeight="300"
+                                                              Zones="{Binding Exam.CurrentZones}"
+                                                              ImageSource="{Binding Exam.PageImageSource}"
+                                                              PageIndex="{Binding Exam.CurrentPageIndex}"
+                                                              AnswerSink="{Binding Exam}" />
+                                </Grid>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                    <Grid Margin="8"
+                          Visibility="{Binding SelectedNavIndex, Converter={StaticResource NavSectionVis}, ConverterParameter=3}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <ComboBox Width="320" Margin="0,0,8,0"
-                                  ItemsSource="{Binding Exam.Pages}"
-                                  SelectedItem="{Binding Exam.SelectedPage, Mode=TwoWay}"
-                                  DisplayMemberPath="PageNumber" />
-                        <ui:Button Margin="0,0,6,0" Content="Назад"
-                                   Command="{Binding Exam.GoPreviousPageCommand}"
-                                   IsEnabled="{Binding Exam.CanGoPrevious}" />
-                        <ui:Button Margin="0,0,6,0" Content="Вперёд"
-                                   Command="{Binding Exam.GoNextPageCommand}"
-                                   IsEnabled="{Binding Exam.CanGoNext}" />
-                        <ui:Button Appearance="Primary" Content="Завершить и проверить краткие ответы"
-                                   Command="{Binding Exam.FinishAndGradeCommand}" />
-                    </StackPanel>
-
-                    <Border Grid.Row="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                            BorderThickness="1" CornerRadius="4" ClipToBounds="True">
-                        <controls:BlankFillCanvas x:Name="FillCanvas"
-                                                  Zones="{Binding Exam.CurrentZones}"
-                                                  ImageSource="{Binding Exam.PageImageSource}"
-                                                  PageIndex="{Binding Exam.CurrentPageIndex}"
-                                                  AnswerSink="{Binding Exam}" />
-                    </Border>
-
-                    <DataGrid Grid.Row="2" Margin="0,8,0,0" MaxHeight="220" AutoGenerateColumns="False"
-                              ItemsSource="{Binding Exam.GradingResults}"
-                              Visibility="{Binding Exam.HasGraded, Converter={StaticResource BoolVis}}">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="№" Binding="{Binding TaskId}" Width="50" IsReadOnly="True" />
-                            <DataGridCheckBoxColumn Header="Верно" Binding="{Binding IsCorrect}" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Эталон" Binding="{Binding Expected}" Width="*" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Ваш ответ" Binding="{Binding Actual}" Width="*" IsReadOnly="True" />
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <TextBlock Grid.Row="0" Margin="0,0,0,10" TextWrapping="Wrap" FontWeight="SemiBold"
+                               Text="{Binding Exam.ResultSummaryText}" />
+                    <Grid Grid.Row="1">
+                        <DataGrid AutoGenerateColumns="False"
+                                  ItemsSource="{Binding Exam.GradingResults}"
+                                  Visibility="{Binding Exam.HasGraded, Converter={StaticResource BoolVis}}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="№" Binding="{Binding TaskId}" Width="50" IsReadOnly="True" />
+                                <DataGridCheckBoxColumn Header="Верно" Binding="{Binding IsCorrect}" IsReadOnly="True" />
+                                <DataGridTextColumn Header="Эталон" Binding="{Binding Expected}" Width="*" IsReadOnly="True" />
+                                <DataGridTextColumn Header="Ваш ответ" Binding="{Binding Actual}" Width="*" IsReadOnly="True" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Text="Сначала в разделе «Экзамен» нажмите «Завершить и проверить», затем вернитесь сюда."
+                                   TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   MaxWidth="420" TextAlignment="Center" Opacity="0.75">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Exam.HasGraded}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
                 </Grid>
-            </TabItem>
-        </TabControl>
+
+                    <Grid Margin="8"
+                          Visibility="{Binding SelectedNavIndex, Converter={StaticResource NavSectionVis}, ConverterParameter=4}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <ui:Button Margin="0,0,8,4" Appearance="Secondary" Content="Обновить список"
+                                   Command="{Binding Orders.RefreshMineCommand}" />
+                        <ui:Button Margin="0,0,8,4" Content="Новый заказ"
+                                   Command="{Binding Orders.ToggleCreatePanelCommand}" />
+                    </WrapPanel>
+                    <TextBlock Grid.Row="1" Text="{Binding Orders.OrdersMessage}" TextWrapping="Wrap" Opacity="0.75"
+                               Margin="0,0,0,8" FontSize="12" />
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="280" MinWidth="220" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" MinWidth="360" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                BorderThickness="1" CornerRadius="6" Padding="4">
+                            <ListBox ItemsSource="{Binding Orders.Orders}"
+                                     SelectedItem="{Binding Orders.SelectedOrder, Mode=TwoWay}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="4">
+                                            <TextBlock FontWeight="SemiBold" Text="{Binding Id, StringFormat=Заказ №{0}}" />
+                                            <TextBlock FontSize="12" Opacity="0.85"
+                                                       Text="{Binding Status, Converter={StaticResource OrderStatusConv}}" />
+                                            <TextBlock FontSize="11" Opacity="0.65"
+                                                       Text="{Binding ChangedAt, StringFormat={}{0:g}}" />
+                                            <TextBlock FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding CnnId, StringFormat=CNN {0}}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+
+                        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                            <StackPanel MaxWidth="720">
+                                <StackPanel Visibility="{Binding Orders.ShowCreatePanel, Converter={StaticResource BoolVis}}">
+                                    <TextBlock FontWeight="SemiBold" FontSize="14" Text="Новый заказ" Margin="0,0,0,8" />
+                                    <TextBlock TextWrapping="Wrap" Opacity="0.75" Margin="0,0,0,8"
+                                               Text="Укажите вариант (CNN) и URL файла ответа (после загрузки через API файлов). При необходимости сразу поставьте в очередь." />
+                                    <TextBlock Margin="0,0,0,4" Text="Вариант" />
+                                    <ComboBox ItemsSource="{Binding Orders.CnnOptions}"
+                                              SelectedItem="{Binding Orders.NewOrderSelectedCnn, Mode=TwoWay}"
+                                              MinWidth="280" HorizontalAlignment="Left">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Subject}" FontWeight="SemiBold" />
+                                                    <TextBlock Text=" · " Opacity="0.5" />
+                                                    <TextBlock Text="{Binding Option, StringFormat=вар. {0}}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <TextBlock Margin="0,12,0,4" Text="URL ответа" />
+                                    <ui:TextBox Text="{Binding Orders.NewOrderAnswerUrl, UpdateSourceTrigger=PropertyChanged}"
+                                                MinWidth="400" HorizontalAlignment="Stretch" />
+                                    <CheckBox Margin="0,10,0,0" Content="Сразу в очередь на проверку (статус «В очереди»)"
+                                              IsChecked="{Binding Orders.QueueImmediatelyAfterCreate, Mode=TwoWay}" />
+                                    <ui:Button Margin="0,12,0,0" HorizontalAlignment="Left" Appearance="Primary"
+                                               Content="Создать" Command="{Binding Orders.CreateOrderCommand}" />
+                                    <Separator Margin="0,20,0,20" />
+                                </StackPanel>
+
+                                <StackPanel Visibility="{Binding Orders.HasSelectedOrder, Converter={StaticResource BoolVis}}">
+                                    <TextBlock FontWeight="SemiBold" FontSize="14" Text="Карточка заказа" />
+                                    <TextBlock Margin="0,8,0,0">
+                                        <Run Text="Статус: " />
+                                        <Run Text="{Binding Orders.SelectedOrder.Status, Converter={StaticResource OrderStatusConv}, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Margin="0,4,0,0" Text="{Binding Orders.SelectedOrder.Id, StringFormat=Id: {0}}" />
+                                    <TextBlock Text="{Binding Orders.SelectedOrder.CnnId, StringFormat=CNN: {0}}" />
+                                    <TextBlock Margin="0,12,0,4" Text="Ссылка на файл ответа (answerUrl)" />
+                                    <ui:TextBox Text="{Binding Orders.EditAnswerUrl, UpdateSourceTrigger=PropertyChanged}"
+                                                TextWrapping="Wrap" AcceptsReturn="True" MinHeight="56" />
+                                    <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                                        <ui:Button Margin="0,0,8,0" Content="Сохранить ссылку"
+                                                   Command="{Binding Orders.SaveAnswerUrlCommand}"
+                                                   IsEnabled="{Binding Orders.CanSaveUrl}" />
+                                        <ui:Button Appearance="Primary" Content="В очередь на проверку"
+                                                   Command="{Binding Orders.SubmitToQueueCommand}"
+                                                   IsEnabled="{Binding Orders.CanSubmitQueue}" />
+                                    </StackPanel>
+                                    <TextBlock Margin="0,14,0,0" TextWrapping="Wrap" Foreground="#c42b1c"
+                                               Visibility="{Binding Orders.ShowRejection, Converter={StaticResource BoolVis}}">
+                                        <Run Text="Отклонено: " />
+                                        <Run Text="{Binding Orders.RejectionDisplay, Mode=OneWay}" />
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Margin="0,20,0,0"
+                                            Visibility="{Binding Orders.ShowReviewSection, Converter={StaticResource BoolVis}}">
+                                    <TextBlock FontWeight="SemiBold" Text="Результат проверки" />
+                                    <TextBlock Margin="0,8,0,0" Opacity="0.75" TextWrapping="Wrap"
+                                               Visibility="{Binding Orders.ReviewNotFound, Converter={StaticResource BoolVis}}"
+                                               Text="Отзыв эксперта ещё не загружен (Review not found)." />
+                                    <StackPanel Visibility="{Binding Orders.HasCurrentReview, Converter={StaticResource BoolVis}}">
+                                        <TextBlock Margin="0,8,0,0">
+                                            <Run Text="Баллы: " />
+                                            <Run FontWeight="SemiBold" Text="{Binding Orders.CurrentReview.TotalScore, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                                   Text="{Binding Orders.CurrentReview.GeneralComment, Mode=OneWay}" />
+                                        <TextBlock Margin="0,12,0,6" FontWeight="SemiBold" Text="Критерии" />
+                                        <DataGrid ItemsSource="{Binding Orders.CurrentReview.Criteria}"
+                                                  AutoGenerateColumns="False" IsReadOnly="True"
+                                                  HeadersVisibility="Column" MaxHeight="220">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="№" Binding="{Binding TaskNumber}" Width="44" />
+                                                <DataGridTextColumn Header="Код" Binding="{Binding CriterionCode}" Width="100" />
+                                                <DataGridTextColumn Header="Балл" Binding="{Binding Score}" Width="56" />
+                                                <DataGridTextColumn Header="Комментарий" Binding="{Binding Comment}" Width="*" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </ui:FluentWindow>

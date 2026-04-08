@@ -24,6 +24,31 @@ public sealed class RefreshTokenRequestDto
     public string RefreshToken { get; set; } = string.Empty;
 }
 
+public sealed class RegisterRequestCodeDto
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class RegisterConfirmDto
+{
+    public string Email { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
+public sealed class PasswordResetRequestCodeDto
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class PasswordResetConfirmDto
+{
+    public string Email { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}
+
 // ===== Users =====
 
 public sealed class UserReadDto
@@ -142,7 +167,14 @@ public sealed class AnnotationZoneWriteDto
     public string? Label { get; set; }
 }
 
-// ===== Orders =====
+// ===== Orders (orderanswers API) =====
+
+public sealed class OrderAnswerCreateDto
+{
+    public int CnnId { get; set; }
+    public string AnswerUrl { get; set; } = string.Empty;
+    public OrderAnswerStatus? Status { get; set; }
+}
 
 public sealed class OrderAnswerReadDto
 {
@@ -161,6 +193,17 @@ public sealed class OrderAnswerUpdateDto
     public string? AnswerUrl { get; set; }
     public OrderAnswerStatus? Status { get; set; }
     public int? ExpertId { get; set; }
+}
+
+/// <summary>Query для GET <c>/api/orderanswers</c> (пагинация и фильтры).</summary>
+public sealed class OrderAnswerListQuery
+{
+    public int? CnnId { get; set; }
+    public OrderAnswerStatus? Status { get; set; }
+    public DateTime? FromChangedAtUtc { get; set; }
+    public DateTime? ToChangedAtUtc { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
 }
 
 public sealed class OrderAnswerRejectDto
@@ -228,4 +271,11 @@ public sealed class ApiErrorDto
 
     [JsonPropertyName("detail")]
     public string? Detail { get; set; }
+}
+
+/// <summary>Частый формат ошибок ASP.NET: <c>{"message":"..."}</c>.</summary>
+public sealed class ApiSimpleMessageDto
+{
+    [JsonPropertyName("message")]
+    public string? Message { get; set; }
 }
