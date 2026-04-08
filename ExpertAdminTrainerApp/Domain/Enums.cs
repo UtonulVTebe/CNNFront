@@ -61,5 +61,7 @@ public enum ZoneInputMode
     /// <summary>Свободный текст.</summary>
     Text = 1,
     /// <summary>Рисование (математика/физика).</summary>
-    Drawing = 2
+    Drawing = 2,
+    /// <summary>Текст и рисунок в одной зоне (бланк №2).</summary>
+    TextAndDrawing = 3
 }

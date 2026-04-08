@@ -1,7 +1,8 @@
 <UserControl x:Class="ExpertAdminTrainerApp.Presentation.Views.OrdersView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:controls="clr-namespace:ExpertAdminTrainerApp.Presentation.Controls">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolVis" />
     </UserControl.Resources>
@@ -15,7 +16,7 @@
         <!-- Left: Queue + My checking -->
         <DockPanel Grid.Column="0" Margin="0,0,8,0">
             <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.55" FontSize="11" Margin="0,0,0,8"
-                       Text="Очередь: без фильтра статуса — как на сервере (NoCheck и QueueForCheck). Для claim нужен профиль Expert_Info (иначе 403)." />
+                       Text="Очередь: без фильтра статуса — как на сервере. «Взять в работу» — только заказ в статусе «В очереди на проверку», роль Expert или Admin, не ваш собственный заказ (тот же UserId). На API нужен профиль Expert_Info (иначе 403)." />
             <TabControl>
                 <TabItem Header="Очередь">
                     <DockPanel Margin="0,4,0,0">
@@ -130,6 +131,42 @@
                                     <TextBlock Text="{Binding SelectedQueueOrder.AnswerUrl, TargetNullValue='(нет ссылки)'}"
                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Opacity="0.7" />
                                 </DockPanel>
+                            </StackPanel>
+                        </ui:Card>
+
+                        <ui:Card Padding="10" Margin="0,6,0,0"
+                                 Visibility="{Binding HasOrderSubmissionPreview, Converter={StaticResource BoolVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Бланк (пакет JSON)" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                <TextBlock TextWrapping="Wrap" Opacity="0.55" FontSize="11" Margin="0,0,0,8"
+                                           Text="Тот же порядок страниц и Id зон, что у ученика. Фон — относительно материала «Разметка бланков (JSON)» на КИМ." />
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock DockPanel.Dock="Left" Text="Страница:" VerticalAlignment="Center"
+                                               Margin="0,0,8,0" />
+                                    <ComboBox ItemsSource="{Binding OrderSubmissionPages}"
+                                              SelectedIndex="{Binding OrderSubmissionPageIndex, Mode=TwoWay}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock>
+                                                    <Run Text="{Binding BlankType, Mode=OneWay}" />
+                                                    <Run Text=" · стр. " />
+                                                    <Run Text="{Binding PageNumber, Mode=OneWay}" />
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </DockPanel>
+                                <Border BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                                        CornerRadius="4" ClipToBounds="True" MaxHeight="520" MinHeight="220">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Auto">
+                                        <controls:BlankSubmissionReviewCanvas MinWidth="400" MinHeight="280"
+                                                                              Zones="{Binding OrderSubmissionCurrentZones}"
+                                                                              ImageSource="{Binding OrderSubmissionPageImage}"
+                                                                              PageIndex="{Binding OrderSubmissionPageIndex}"
+                                                                              AnswerSink="{Binding OrderSubmissionAnswerSink}" />
+                                    </ScrollViewer>
+                                </Border>
                             </StackPanel>
                         </ui:Card>
 

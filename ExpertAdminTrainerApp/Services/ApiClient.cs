@@ -32,11 +32,11 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
     public Task<IReadOnlyList<OrderAnswerReadDto>> GetQueueAsync(OrderAnswerStatus? status, CancellationToken ct = default)
     {
         var suffix = status is null ? string.Empty : $"?status={(int)status.Value}";
-        return SendWithAuthAsync<IReadOnlyList<OrderAnswerReadDto>>(HttpMethod.Get, $"api/OrderAnswers/queue{suffix}", null, ct);
+        return SendWithAuthAsync<IReadOnlyList<OrderAnswerReadDto>>(HttpMethod.Get, $"api/orderanswers/queue{suffix}", null, ct);
     }
 
     public Task<IReadOnlyList<OrderAnswerReadDto>> GetMineAsync(CancellationToken ct = default) =>
-        SendWithAuthAsync<IReadOnlyList<OrderAnswerReadDto>>(HttpMethod.Get, "api/OrderAnswers/mine", null, ct);
+        SendWithAuthAsync<IReadOnlyList<OrderAnswerReadDto>>(HttpMethod.Get, "api/orderanswers/mine", null, ct);
 
     public Task<PaginatedResponse<OrderAnswerReadDto>> GetOrdersPagedAsync(
         int? cnnId = null, int? studentId = null, int? expertId = null,
@@ -53,20 +53,20 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
             ("to", to?.ToString("O")),
             ("page", page.ToString()),
             ("pageSize", pageSize.ToString()));
-        return SendWithAuthAsync<PaginatedResponse<OrderAnswerReadDto>>(HttpMethod.Get, $"api/OrderAnswers{qs}", null, ct);
+        return SendWithAuthAsync<PaginatedResponse<OrderAnswerReadDto>>(HttpMethod.Get, $"api/orderanswers{qs}", null, ct);
     }
 
     public Task<OrderAnswerReadDto> GetOrderByIdAsync(int id, CancellationToken ct = default) =>
-        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Get, $"api/OrderAnswers/{id}", null, ct);
+        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Get, $"api/orderanswers/{id}", null, ct);
 
     public Task<OrderAnswerReadDto> ClaimOrderAsync(int id, CancellationToken ct = default) =>
-        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Post, $"api/OrderAnswers/{id}/claim", null, ct);
+        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Post, $"api/orderanswers/{id}/claim", null, ct);
 
     public Task<OrderAnswerReadDto> UpdateOrderAsync(int id, OrderAnswerUpdateDto dto, CancellationToken ct = default) =>
-        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Put, $"api/OrderAnswers/{id}", ToJsonContent(dto), ct);
+        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Put, $"api/orderanswers/{id}", ToJsonContent(dto), ct);
 
     public Task RejectOrderAsync(int id, string reason, CancellationToken ct = default) =>
-        SendNoContentWithAuthAsync(HttpMethod.Post, $"api/OrderAnswers/{id}/reject",
+        SendNoContentWithAuthAsync(HttpMethod.Post, $"api/orderanswers/{id}/reject",
             ToJsonContent(new OrderAnswerRejectDto { Reason = reason }), ct);
 
     // ===== Reviews =====
@@ -75,7 +75,7 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
     {
         try
         {
-            return await SendWithAuthAsync<ReviewReadDto>(HttpMethod.Get, $"api/OrderAnswers/{orderAnswerId}/review", null, ct);
+            return await SendWithAuthAsync<ReviewReadDto>(HttpMethod.Get, $"api/orderanswers/{orderAnswerId}/review", null, ct);
         }
         catch
         {
@@ -84,10 +84,10 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
     }
 
     public Task<ReviewReadDto> CreateReviewAsync(int orderAnswerId, ReviewWriteDto dto, CancellationToken ct = default) =>
-        SendWithAuthAsync<ReviewReadDto>(HttpMethod.Post, $"api/OrderAnswers/{orderAnswerId}/review", ToJsonContent(dto), ct);
+        SendWithAuthAsync<ReviewReadDto>(HttpMethod.Post, $"api/orderanswers/{orderAnswerId}/review", ToJsonContent(dto), ct);
 
     public Task<ReviewReadDto> UpdateReviewAsync(int orderAnswerId, ReviewWriteDto dto, CancellationToken ct = default) =>
-        SendWithAuthAsync<ReviewReadDto>(HttpMethod.Put, $"api/OrderAnswers/{orderAnswerId}/review", ToJsonContent(dto), ct);
+        SendWithAuthAsync<ReviewReadDto>(HttpMethod.Put, $"api/orderanswers/{orderAnswerId}/review", ToJsonContent(dto), ct);
 
     // ===== CNN =====
 
@@ -179,6 +179,39 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
         }
 
         return text;
+    }
+
+    public async Task<byte[]> DownloadBytesAsync(string url, CancellationToken ct = default)
+    {
+        var uri = ResolveRequestUri(url);
+        var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        if (!string.IsNullOrWhiteSpace(tokenStore.AccessToken))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenStore.AccessToken);
+
+        var response = await httpClient.SendAsync(request, ct);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized && await TryRefreshAsync(ct))
+        {
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenStore.AccessToken);
+            response = await httpClient.SendAsync(request, ct);
+        }
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var text = Encoding.UTF8.GetString(bytes);
+            ApiErrorDto? error = null;
+            try { error = JsonSerializer.Deserialize<ApiErrorDto>(text, _jsonOptions); }
+            catch { /* ignored */ }
+
+            var message = error?.Message ?? error?.Detail ?? error?.Title
+                ?? $"HTTP {(int)response.StatusCode}";
+            var body = text.Length <= 500 ? text : text[..500] + "…";
+            throw new InvalidOperationException($"{message} | {body}");
+        }
+
+        return bytes;
     }
 
     private Uri ResolveRequestUri(string url)

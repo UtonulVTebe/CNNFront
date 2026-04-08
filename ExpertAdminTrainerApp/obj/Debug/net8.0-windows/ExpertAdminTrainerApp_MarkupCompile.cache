@@ -4,15 +4,15 @@
 winexe
 C#
 .cs
-C:\Users\Maksim\Documents\GitHub\CNNFront\ExpertAdminTrainerApp\obj\Debug\net8.0-windows\
+c:\Users\Maksim\Documents\GitHub\CNNFront\ExpertAdminTrainerApp\obj\Debug\net8.0-windows\
 ExpertAdminTrainerApp
 none
 false
 TRACE;DEBUG;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
-C:\Users\Maksim\Documents\GitHub\CNNFront\ExpertAdminTrainerApp\App.xaml
+c:\Users\Maksim\Documents\GitHub\CNNFront\ExpertAdminTrainerApp\App.xaml
 6472151090
 2-1791768078
-28333974414
+34-293826615
 219-1288816603
 MainWindow.xaml;Presentation\Views\CatalogView.xaml;Presentation\Views\ConstructorView.xaml;Presentation\Views\OrdersView.xaml;Presentation\Views\ToolsView.xaml;Presentation\Views\UsersView.xaml;
 

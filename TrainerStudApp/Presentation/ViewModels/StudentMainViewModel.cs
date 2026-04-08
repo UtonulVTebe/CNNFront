@@ -518,4 +518,78 @@ public partial class StudentMainViewModel(
             IsBusy = false;
         }
     }
+
+    [RelayCommand]
+    private async Task UploadSubmissionForReviewAsync()
+    {
+        if (!IsAuthenticated)
+        {
+            StatusText = "Войдите в профиль.";
+            return;
+        }
+
+        if (!HasExam)
+        {
+            StatusText = "Сначала начните экзамен и заполните бланки.";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var url = await examSession.UploadSubmissionPackageAsync(default);
+            if (string.IsNullOrEmpty(url))
+            {
+                StatusText = "Сервер не вернул URL загруженного файла.";
+                return;
+            }
+
+            orders.NewOrderAnswerUrl = url;
+            SelectedNavIndex = 4;
+            StatusText =
+                "Пакет ответа загружен на сервер. На вкладке «Проверки» подставлена ссылка — создайте заказ или обновите существующий.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Загрузка пакета не удалась: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveSubmissionLocalAsync()
+    {
+        if (!HasExam)
+        {
+            StatusText = "Нет активной сессии экзамена.";
+            return;
+        }
+
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "JSON (*.json)|*.json",
+            FileName = $"exam_submission_{examSession.CurrentTemplate?.CnnId ?? 0}.json"
+        };
+
+        if (dlg.ShowDialog() != true)
+            return;
+
+        IsBusy = true;
+        try
+        {
+            await File.WriteAllTextAsync(dlg.FileName, examSession.GetSubmissionJson());
+            StatusText = $"Пакет сохранён: {dlg.FileName}";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Не удалось сохранить файл: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
 }

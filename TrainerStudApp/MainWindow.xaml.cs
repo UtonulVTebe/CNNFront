@@ -55,4 +55,14 @@ public partial class MainWindow
             await cmd.ExecuteAsync(ResetNewPwd.Password);
         ResetNewPwd.Clear();
     }
+
+    private void OnBlankUndoInkClick(object sender, RoutedEventArgs e)
+    {
+        _ = FillCanvas.TryUndoLastInkStroke();
+    }
+
+    private void OnBlankInkEraserToggleClick(object sender, RoutedEventArgs e)
+    {
+        _ = FillCanvas.ToggleInkEraserMode();
+    }
 }

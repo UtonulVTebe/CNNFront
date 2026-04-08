@@ -1,11 +1,15 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ExpertAdminTrainerApp.Domain;
+using ExpertAdminTrainerApp.Presentation.Controls;
 using ExpertAdminTrainerApp.Services;
 using Microsoft.Win32;
 
@@ -54,6 +58,12 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
     [ObservableProperty] private DateTime? expertMyOrdersFrom;
     [ObservableProperty] private DateTime? expertMyOrdersTo;
 
+    // ===== Просмотр пакета ответа ученика (JSON) =====
+    [ObservableProperty] private ExamSubmissionDocument? orderSubmissionDocument;
+    [ObservableProperty] private string? orderSubmissionBlankJsonUrl;
+    [ObservableProperty] private int orderSubmissionPageIndex;
+    [ObservableProperty] private ImageSource? orderSubmissionPageImage;
+
     // ===== Review =====
     [ObservableProperty] private ReviewReadDto? currentReview;
     [ObservableProperty] private bool isEditingReview;
@@ -78,6 +88,10 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
     public ObservableCollection<CnnMaterialDto> OrderCriteriaMaterials { get; } = [];
     public ObservableCollection<UserListItemDto> Users { get; } = [];
     public ObservableCollection<ReviewCriterionDto> ReviewCriteria { get; } = [];
+    public ObservableCollection<BlankPageDefinition> OrderSubmissionPages { get; } = [];
+    public ObservableCollection<ZoneDefinition> OrderSubmissionCurrentZones { get; } = [];
+
+    private DictionaryAnswerSink? _orderSubmissionAnswerSink;
 
     public IReadOnlyList<string> QueueStatusOptions { get; } =
         [QueueFilterServerDefault, .. Enum.GetNames<OrderAnswerStatus>()];
@@ -94,14 +108,13 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
     public bool HasNoSelectedUser => SelectedUser is null;
     public bool HasReview => CurrentReview is not null;
     public bool HasNoReview => CurrentReview is null;
+    public bool HasOrderSubmissionPreview => OrderSubmissionDocument is { Template.Pages.Count: > 0 };
+    public IZoneAnswerSink? OrderSubmissionAnswerSink => _orderSubmissionAnswerSink;
     public string EditingMaterialKindLabel => KindLabel(EditingMaterialKind);
 
+    /// <summary>Кнопка «Взять в работу»: Expert или Admin; только <see cref="OrderAnswerStatus.QueueForCheck"/>; без эксперта; не свой заказ (если из JWT известен числовой Id).</summary>
     public bool CanClaimSelectedOrder =>
-        IsExpert && SelectedQueueOrder is { } o &&
-        o.Status == OrderAnswerStatus.QueueForCheck &&
-        !o.ExpertId.HasValue &&
-        CurrentUserId.HasValue &&
-        o.UserId != CurrentUserId.Value;
+        SelectedQueueOrder is not null && ExplainWhyCannotClaimOrder() is null;
 
     public bool CanRejectSelectedOrder =>
         IsExpert && SelectedQueueOrder is { } o &&
@@ -175,6 +188,7 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
             CurrentReview = null;
             ReviewCriteria.Clear();
             IsEditingReview = false;
+            ClearOrderSubmissionPreview();
             RaiseExpertOrderFlags();
             return;
         }
@@ -188,6 +202,7 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
             if (IsExpert) _ = LoadReview(value.Id);
             OnPropertyChanged(nameof(SelectedOrderStatusText));
             RaiseExpertOrderFlags();
+            _ = TryLoadOrderSubmissionPreviewAsync(value);
             return;
         }
 
@@ -203,6 +218,11 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
         if (IsExpert) _ = LoadReview(value.Id);
         _ = HydrateSelectedOrderFromServerAsync(value.Id);
     }
+
+    partial void OnOrderSubmissionPageIndexChanged(int value) => _ = LoadOrderSubmissionPageAsync();
+
+    partial void OnOrderSubmissionDocumentChanged(ExamSubmissionDocument? value) =>
+        OnPropertyChanged(nameof(HasOrderSubmissionPreview));
 
     partial void OnSelectedUserChanged(UserListItemDto? value)
     {
@@ -533,11 +553,35 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
         finally { IsBusy = false; }
     }
 
+    /// <summary>Почему нельзя взять заказ; <c>null</c> — можно (или заказ не выбран — смотрите <see cref="CanClaimSelectedOrder"/>).</summary>
+    private string? ExplainWhyCannotClaimOrder()
+    {
+        if (SelectedQueueOrder is not { } o)
+            return null;
+
+        if (!IsAdminOrExpert)
+            return "Войдите под ролью Expert или Admin. Роль Student в этом приложении не может брать заказы.";
+
+        if (o.Status != OrderAnswerStatus.QueueForCheck)
+            return
+                $"Статус заказа: «{FormatOrderStatus(o.Status)}». Взять можно только заказ «В очереди на проверку» — ученик должен отправить его в очередь (вкладка «Проверки»).";
+
+        if (o.ExpertId.HasValue)
+            return "У заказа уже назначен эксперт.";
+
+        if (CurrentUserId.HasValue && o.UserId == CurrentUserId.Value)
+            return
+                "Это заказ с вашего же аккаунта (UserId совпадает с Id из токена). Такой заказ нельзя взять в работу — войдите другим экспертом или создайте заказ с другого ученика.";
+
+        return null;
+    }
+
     [RelayCommand]
     private async Task ClaimSelectedOrder()
     {
         if (SelectedQueueOrder is null) { StatusText = "Выберите заказ."; return; }
-        if (!CanClaimSelectedOrder) { StatusText = "Нельзя взять этот заказ (условия claim не выполнены)."; return; }
+        var block = ExplainWhyCannotClaimOrder();
+        if (block is not null) { StatusText = block; return; }
         try
         {
             IsBusy = true;
@@ -938,11 +982,124 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
                 await LoadReview(fresh.Id);
             OnPropertyChanged(nameof(SelectedOrderStatusText));
             RaiseExpertOrderFlags();
+            await TryLoadOrderSubmissionPreviewAsync(fresh);
         }
         catch (Exception ex)
         {
             StatusText = $"Не удалось обновить заказ #{id}: {ex.Message}";
         }
+    }
+
+    private void ClearOrderSubmissionPreview()
+    {
+        OrderSubmissionDocument = null;
+        OrderSubmissionBlankJsonUrl = null;
+        OrderSubmissionPageIndex = 0;
+        OrderSubmissionPageImage = null;
+        OrderSubmissionPages.Clear();
+        OrderSubmissionCurrentZones.Clear();
+        _orderSubmissionAnswerSink = null;
+        OnPropertyChanged(nameof(OrderSubmissionAnswerSink));
+    }
+
+    private async Task TryLoadOrderSubmissionPreviewAsync(OrderAnswerReadDto order)
+    {
+        ClearOrderSubmissionPreview();
+        if (string.IsNullOrWhiteSpace(order.AnswerUrl))
+            return;
+
+        try
+        {
+            var text = await apiClient.DownloadTextAsync(order.AnswerUrl.Trim());
+            var doc = ExamSubmissionDocument.Deserialize(text);
+            if (doc?.Template is not { Pages.Count: > 0 })
+                return;
+
+            _orderSubmissionAnswerSink = new DictionaryAnswerSink(
+                new Dictionary<string, string>(doc.Answers, StringComparer.Ordinal));
+            OnPropertyChanged(nameof(OrderSubmissionAnswerSink));
+
+            OrderSubmissionDocument = doc;
+            foreach (var p in doc.Template.Pages)
+                OrderSubmissionPages.Add(p);
+
+            try
+            {
+                var details = await apiClient.GetCnnDetailsAsync(order.CnnId);
+                var blankMat = details.Materials.FirstOrDefault(m =>
+                    m.Kind == MaterialKind.Blanks
+                    && string.Equals(m.Title?.Trim(), BlankTemplateSyncService.RemoteMaterialTitle,
+                        StringComparison.OrdinalIgnoreCase));
+                OrderSubmissionBlankJsonUrl = blankMat?.Url?.Trim();
+            }
+            catch
+            {
+                OrderSubmissionBlankJsonUrl = null;
+            }
+
+            OrderSubmissionPageIndex = 0;
+            await LoadOrderSubmissionPageAsync();
+        }
+        catch
+        {
+            ClearOrderSubmissionPreview();
+        }
+    }
+
+    private async Task LoadOrderSubmissionPageAsync()
+    {
+        OrderSubmissionPageImage = null;
+        OrderSubmissionCurrentZones.Clear();
+        var doc = OrderSubmissionDocument;
+        if (doc?.Template?.Pages is not { Count: > 0 } pages)
+            return;
+
+        var idx = Math.Clamp(OrderSubmissionPageIndex, 0, pages.Count - 1);
+        var page = pages[idx];
+        foreach (var z in page.Zones)
+            OrderSubmissionCurrentZones.Add(z);
+
+        var resolved = TemplateMediaResolver.Resolve(page.ImagePath ?? string.Empty, OrderSubmissionBlankJsonUrl);
+        if (string.IsNullOrWhiteSpace(resolved))
+            return;
+
+        try
+        {
+            if (Uri.TryCreate(resolved, UriKind.Absolute, out var uri) &&
+                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                var bytes = await apiClient.DownloadBytesAsync(resolved);
+                OrderSubmissionPageImage = BitmapImageFromBytes(bytes);
+                return;
+            }
+
+            if (File.Exists(resolved))
+            {
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.UriSource = new Uri(resolved, UriKind.Absolute);
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.EndInit();
+                bmp.Freeze();
+                OrderSubmissionPageImage = bmp;
+            }
+        }
+        catch
+        {
+            /* ignore */
+        }
+    }
+
+    private static BitmapImage BitmapImageFromBytes(byte[] bytes)
+    {
+        using var ms = new MemoryStream(bytes);
+        var bmp = new BitmapImage();
+        bmp.BeginInit();
+        bmp.CacheOption = BitmapCacheOption.OnLoad;
+        bmp.StreamSource = ms;
+        bmp.EndInit();
+        bmp.Freeze();
+        return bmp;
     }
 
     private void ApplyTokenContext(string accessToken)
@@ -1008,12 +1165,20 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
     private static int? TryParseUserIdClaim(Dictionary<string, object?> payload)
     {
         var raw = GetClaimValue(payload,
+            "userId",
+            "UserId",
+            "userid",
+            "uid",
+            "nameid",
             "sub",
             "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
-            "http://schemas.microsoft.com/ws/2008/06/identity/claims/userdata",
-            "nameid");
+            "http://schemas.microsoft.com/ws/2008/06/identity/claims/userdata");
         if (string.IsNullOrWhiteSpace(raw)) return null;
-        return int.TryParse(raw.Trim(), out var id) ? id : null;
+        raw = raw.Trim();
+        if (int.TryParse(raw, out var id))
+            return id;
+        // sub часто GUID — если в токене есть отдельный числовой claim выше, он уже сработал
+        return null;
     }
 
     private static string FormatOrderStatus(OrderAnswerStatus s) => s switch

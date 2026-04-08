@@ -1,6 +1,8 @@
 using System.Collections.Specialized;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Shapes;
 using ExpertAdminTrainerApp.Domain;
 
@@ -29,6 +31,14 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
     public static readonly DependencyProperty StampTaskNumberProperty =
         DependencyProperty.Register(nameof(StampTaskNumber), typeof(int), typeof(ZoneEditorCanvas),
             new PropertyMetadata(1));
+
+    public static readonly DependencyProperty StampInputModeProperty =
+        DependencyProperty.Register(nameof(StampInputMode), typeof(ZoneInputMode), typeof(ZoneEditorCanvas),
+            new PropertyMetadata(ZoneInputMode.Cell));
+
+    public static readonly DependencyProperty StampFieldRoleProperty =
+        DependencyProperty.Register(nameof(StampFieldRole), typeof(string), typeof(ZoneEditorCanvas),
+            new PropertyMetadata(null));
 
     public static readonly DependencyProperty CellWidthPercentProperty =
         DependencyProperty.Register(nameof(CellWidthPercent), typeof(float), typeof(ZoneEditorCanvas),
@@ -77,6 +87,10 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
     private readonly Dictionary<string, (float x, float y)> _dragOrigins = new();
     private INotifyCollectionChanged? _selectedZonesNotify;
 
+    private bool _isDrawingRectangle;
+    private Point _drawRectStart;
+    private Rectangle? _drawRectVisual;
+
     public ZoneEditorMode EditorMode
     {
         get => (ZoneEditorMode)GetValue(EditorModeProperty);
@@ -99,6 +113,18 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
     {
         get => (int)GetValue(StampTaskNumberProperty);
         set => SetValue(StampTaskNumberProperty, value);
+    }
+
+    public ZoneInputMode StampInputMode
+    {
+        get => (ZoneInputMode)GetValue(StampInputModeProperty);
+        set => SetValue(StampInputModeProperty, value);
+    }
+
+    public string? StampFieldRole
+    {
+        get => (string?)GetValue(StampFieldRoleProperty);
+        set => SetValue(StampFieldRoleProperty, value);
     }
 
     public float CellWidthPercent
@@ -234,6 +260,14 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
                 RaiseMutationStarting(ZoneMutationKind.Stamp);
                 HandleStamp(pos, Math.Max(1, RowCellCount));
                 break;
+            case ZoneEditorMode.DrawRectangle:
+                RaiseMutationStarting(ZoneMutationKind.Stamp);
+                _isDrawingRectangle = true;
+                _drawRectStart = pos;
+                EnsureDrawRectVisual();
+                UpdateDrawRectVisual(pos);
+                CaptureMouse();
+                break;
         }
 
         e.Handled = true;
@@ -242,6 +276,14 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
     protected override void OnPreviewMouseMove(MouseEventArgs e)
     {
         base.OnPreviewMouseMove(e);
+
+        if (_isDrawingRectangle && e.LeftButton == MouseButtonState.Pressed)
+        {
+            var cur = e.GetPosition(this);
+            UpdateDrawRectVisual(cur);
+            e.Handled = true;
+            return;
+        }
 
         if (!_isDragging || _draggingZones.Count == 0)
             return;
@@ -279,6 +321,19 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
     {
         base.OnPreviewMouseLeftButtonUp(e);
 
+        if (_isDrawingRectangle)
+        {
+            var end = e.GetPosition(this);
+            CommitDrawRectangle(end);
+            _isDrawingRectangle = false;
+            HideDrawRectVisual();
+            if (IsMouseCaptured)
+                ReleaseMouseCapture();
+            RaiseEvent(new RoutedEventArgs(ZoneAddedEvent, this));
+            e.Handled = true;
+            return;
+        }
+
         if (_isDragging)
         {
             _isDragging = false;
@@ -294,6 +349,12 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
 
     protected override void OnLostMouseCapture(MouseEventArgs e)
     {
+        if (_isDrawingRectangle)
+        {
+            _isDrawingRectangle = false;
+            HideDrawRectVisual();
+        }
+
         if (_isDragging)
         {
             _isDragging = false;
@@ -532,8 +593,8 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
 
         int count = preset.CellCount < 0 ? Math.Max(1, RowCellCount) : preset.CellCount;
         var (xPct, yPct) = PixelsToPercent(pos.X, pos.Y);
-        float w = CellWidthPercent;
-        float h = CellHeightPercent;
+        float w = preset.DefaultWidthPercent ?? CellWidthPercent;
+        float h = preset.DefaultHeightPercent ?? CellHeightPercent;
         float gap = CellGapPercent;
         int baseTask = StampTaskNumber;
         string? rowGroup = count > 1 ? Guid.NewGuid().ToString("N") : null;
@@ -541,13 +602,15 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
         for (int i = 0; i < count; i++)
         {
             var validation = ZoneDefinitionCopy.CloneValidation(preset.Validation);
+            var xi = Math.Clamp(xPct + i * (w + gap), 0, 100 - w);
+            var yi = Math.Clamp(yPct, 0, 100 - h);
             var zone = new ZoneDefinition
             {
                 FieldName = count > 1 ? $"{preset.BaseFieldName}_{baseTask + i}" : preset.BaseFieldName,
                 FieldType = preset.FieldType,
                 TaskNumber = baseTask + i,
-                X = Math.Clamp(xPct + i * (w + gap), 0, 100 - w),
-                Y = Math.Clamp(yPct, 0, 100 - h),
+                X = xi,
+                Y = yi,
                 Width = w,
                 Height = h,
                 GroupId = rowGroup,
@@ -556,6 +619,96 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
                 Validation = validation
             };
             zones.Add(zone);
+        }
+    }
+
+    private void EnsureDrawRectVisual()
+    {
+        if (_drawRectVisual is not null)
+            return;
+
+        _drawRectVisual = new Rectangle
+        {
+            Stroke = new SolidColorBrush(Color.FromRgb(33, 150, 243)),
+            StrokeThickness = 2,
+            Fill = new SolidColorBrush(Color.FromArgb(40, 33, 150, 243)),
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed
+        };
+        Panel.SetZIndex(_drawRectVisual, 5000);
+        Children.Add(_drawRectVisual);
+    }
+
+    private void UpdateDrawRectVisual(Point current)
+    {
+        if (_drawRectVisual is null || ImageRect.Width <= 0)
+            return;
+
+        var x0 = Math.Clamp(Math.Min(_drawRectStart.X, current.X), ImageRect.Left, ImageRect.Right);
+        var y0 = Math.Clamp(Math.Min(_drawRectStart.Y, current.Y), ImageRect.Top, ImageRect.Bottom);
+        var x1 = Math.Clamp(Math.Max(_drawRectStart.X, current.X), ImageRect.Left, ImageRect.Right);
+        var y1 = Math.Clamp(Math.Max(_drawRectStart.Y, current.Y), ImageRect.Top, ImageRect.Bottom);
+
+        _drawRectVisual.Visibility = Visibility.Visible;
+        Canvas.SetLeft(_drawRectVisual, x0);
+        Canvas.SetTop(_drawRectVisual, y0);
+        _drawRectVisual.Width = Math.Max(0, x1 - x0);
+        _drawRectVisual.Height = Math.Max(0, y1 - y0);
+    }
+
+    private void HideDrawRectVisual()
+    {
+        if (_drawRectVisual is null)
+            return;
+        _drawRectVisual.Visibility = Visibility.Collapsed;
+        _drawRectVisual.Width = 0;
+        _drawRectVisual.Height = 0;
+    }
+
+    private void CommitDrawRectangle(Point endCanvas)
+    {
+        if (ImageRect.Width <= 0 || ImageRect.Height <= 0)
+            return;
+
+        var x0 = Math.Clamp(Math.Min(_drawRectStart.X, endCanvas.X), ImageRect.Left, ImageRect.Right);
+        var y0 = Math.Clamp(Math.Min(_drawRectStart.Y, endCanvas.Y), ImageRect.Top, ImageRect.Bottom);
+        var x1 = Math.Clamp(Math.Max(_drawRectStart.X, endCanvas.X), ImageRect.Left, ImageRect.Right);
+        var y1 = Math.Clamp(Math.Max(_drawRectStart.Y, endCanvas.Y), ImageRect.Top, ImageRect.Bottom);
+
+        var (xp0, yp0) = PixelsToPercent(x0, y0);
+        var (xp1, yp1) = PixelsToPercent(x1, y1);
+        var w = Math.Max(xp1 - xp0, 0.6f);
+        var h = Math.Max(yp1 - yp0, 0.6f);
+        if (w < 0.55f || h < 0.55f)
+            return;
+
+        var zones = Zones as IList<ZoneDefinition>;
+        if (zones is null)
+            return;
+
+        var mode = StampInputMode;
+        if (StampFieldType is ZoneFieldType.ShortAnswer or ZoneFieldType.Correction or ZoneFieldType.Header)
+            mode = ZoneInputMode.Cell;
+
+        BeginBatchUpdate();
+        try
+        {
+            zones.Add(new ZoneDefinition
+            {
+                FieldName = StampFieldName,
+                FieldType = StampFieldType,
+                TaskNumber = StampTaskNumber,
+                X = Math.Clamp(Math.Min(xp0, xp1), 0, 100 - w),
+                Y = Math.Clamp(Math.Min(yp0, yp1), 0, 100 - h),
+                Width = w,
+                Height = h,
+                InputMode = mode,
+                FieldRole = string.IsNullOrWhiteSpace(StampFieldRole) ? null : StampFieldRole.Trim()
+            });
+        }
+        finally
+        {
+            EndBatchUpdate();
         }
     }
 
@@ -588,7 +741,8 @@ public enum ZoneEditorMode
 {
     Select,
     StampSingle,
-    StampRow
+    StampRow,
+    DrawRectangle
 }
 
 public enum ZoneMutationKind

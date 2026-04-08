@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -131,6 +132,44 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
         }
 
         return bytes;
+    }
+
+    public async Task<FileUploadResponseDto> UploadFileAsync(string filePath, string category,
+        CancellationToken ct = default)
+    {
+        var fileBytes = await File.ReadAllBytesAsync(filePath, ct);
+        return await UploadFileBytesAsync(fileBytes, Path.GetFileName(filePath), category, ct);
+    }
+
+    private async Task<FileUploadResponseDto> UploadFileBytesAsync(byte[] fileBytes, string fileName, string category,
+        CancellationToken ct)
+    {
+        using var form = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(fileBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        form.Add(fileContent, "file", fileName);
+        form.Add(new StringContent(category), "category");
+
+        await EnsureAccessTokenFreshAsync(ct);
+        var request = new HttpRequestMessage(HttpMethod.Post, "api/Files") { Content = form };
+        if (!string.IsNullOrWhiteSpace(tokenStore.AccessToken))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenStore.AccessToken);
+
+        var response = await httpClient.SendAsync(request, ct);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized && await RefreshTokensLockedAsync(ct))
+        {
+            using var form2 = new MultipartFormDataContent();
+            var fc2 = new ByteArrayContent(fileBytes);
+            fc2.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            form2.Add(fc2, "file", fileName);
+            form2.Add(new StringContent(category), "category");
+            var req2 = new HttpRequestMessage(HttpMethod.Post, "api/Files") { Content = form2 };
+            req2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenStore.AccessToken);
+            response = await httpClient.SendAsync(req2, ct);
+        }
+
+        return await ReadAsAsync<FileUploadResponseDto>(response, ct);
     }
 
     public async Task<OrderAnswerReadDto> CreateOrderAnswerAsync(OrderAnswerCreateDto dto, CancellationToken ct = default)

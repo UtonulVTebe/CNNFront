@@ -16,6 +16,9 @@ internal static class ExamAnswerKeyHelper
 
         switch (zone.FieldType)
         {
+            case ZoneFieldType.LongAnswer when zone.InputMode == ZoneInputMode.TextAndDrawing:
+                yield return baseKey;
+                yield break;
             case ZoneFieldType.Drawing when zone.InputMode == ZoneInputMode.Drawing:
                 yield return baseKey;
                 yield break;

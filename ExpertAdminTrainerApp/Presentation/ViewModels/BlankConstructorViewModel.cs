@@ -48,7 +48,7 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
     public IReadOnlyList<string> BlankTypeOptions { get; } = Enum.GetNames<BlankType>();
     public IReadOnlyList<ZoneFieldType> FieldTypes { get; } = Enum.GetValues<ZoneFieldType>().ToArray();
     public IReadOnlyList<ZoneInputMode> InputModes { get; } = Enum.GetValues<ZoneInputMode>().ToArray();
-    public IReadOnlyList<string> EditorModeOptions { get; } = ["Выбрать", "Ячейка", "Ряд ячеек"];
+    public IReadOnlyList<string> EditorModeOptions { get; } = ["Выбрать", "Ячейка", "Ряд ячеек", "Прямоугольник"];
     public IReadOnlyList<ZonePresetTemplate> ZonePresets { get; } = ZonePresetTemplate.Catalog;
 
     // ===== Add Page =====
@@ -269,6 +269,9 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
 
     [RelayCommand]
     private void SetModeStampRow() => EditorMode = ZoneEditorMode.StampRow;
+
+    [RelayCommand]
+    private void SetModeDrawRectangle() => EditorMode = ZoneEditorMode.DrawRectangle;
 
     [RelayCommand]
     private void SelectPreset(ZonePresetTemplate? preset)

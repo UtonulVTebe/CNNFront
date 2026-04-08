@@ -27,6 +27,9 @@ public interface IApiClient
     /// <summary>GET бинарных данных (КИМ, изображения бланков) с Bearer при необходимости.</summary>
     Task<byte[]> DownloadBytesAsync(string url, CancellationToken ct = default);
 
+    /// <summary>POST multipart: файл ответа ученика — <c>category=answer</c>.</summary>
+    Task<FileUploadResponseDto> UploadFileAsync(string filePath, string category, CancellationToken ct = default);
+
     /// <summary>Абсолютный URI для относительных путей API (как в запросах HttpClient).</summary>
     Uri ResolveToAbsoluteUri(string url);
 

@@ -13,6 +13,9 @@ public sealed class ZonePresetTemplate
     public ZoneValidationRules? Validation { get; init; }
     public int StartTaskNumberOffset { get; init; }
 
+    public float? DefaultWidthPercent { get; init; }
+    public float? DefaultHeightPercent { get; init; }
+
     public static IReadOnlyList<ZonePresetTemplate> Catalog { get; } =
     [
         new ZonePresetTemplate
@@ -191,7 +194,9 @@ public sealed class ZonePresetTemplate
             CellCount = 1,
             FieldType = ZoneFieldType.Drawing,
             InputMode = ZoneInputMode.Drawing,
-            Validation = null
+            Validation = null,
+            DefaultWidthPercent = 72f,
+            DefaultHeightPercent = 55f
         },
         new ZonePresetTemplate
         {
@@ -201,7 +206,21 @@ public sealed class ZonePresetTemplate
             FieldRole = null,
             CellCount = 1,
             FieldType = ZoneFieldType.LongAnswer,
-            InputMode = ZoneInputMode.Text
+            InputMode = ZoneInputMode.Text,
+            DefaultWidthPercent = 88f,
+            DefaultHeightPercent = 72f
+        },
+        new ZonePresetTemplate
+        {
+            Id = "expanded_text_and_drawing",
+            DisplayName = "Развёрнутый ответ + рисунок (одна зона)",
+            BaseFieldName = "развернутый",
+            FieldRole = null,
+            CellCount = 1,
+            FieldType = ZoneFieldType.LongAnswer,
+            InputMode = ZoneInputMode.TextAndDrawing,
+            DefaultWidthPercent = 88f,
+            DefaultHeightPercent = 72f
         }
     ];
 }

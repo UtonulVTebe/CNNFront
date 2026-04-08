@@ -30,7 +30,7 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
     [ObservableProperty] private string resultSummaryText = string.Empty;
 
     /// <summary>Масштаб панели бланка (1.0 = 100%).</summary>
-    [ObservableProperty] private double blankPanelZoom = 1.0;
+    [ObservableProperty] private double blankPanelZoom = 1.75;
 
     public ObservableCollection<TaskGradeResult> GradingResults { get; } = [];
 
@@ -74,7 +74,7 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
         CurrentStepLabel = string.Empty;
         _templateJsonMaterialUrl = null;
         CurrentPageIndex = 0;
-        BlankPanelZoom = 1.0;
+        BlankPanelZoom = 1.75;
         OnPropertyChanged(nameof(CanAddAnswerSheet2));
     }
 
@@ -87,6 +87,30 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
             _answers.Remove(key);
         else
             _answers[key] = value;
+    }
+
+    public IReadOnlyDictionary<string, string> ExportAnswersDictionary() =>
+        new Dictionary<string, string>(_answers, StringComparer.Ordinal);
+
+    public string GetSubmissionJson() =>
+        ExamSubmissionDocument.Serialize(ExamSubmissionBuilder.Build(this));
+
+    public async Task<string?> UploadSubmissionPackageAsync(CancellationToken ct = default)
+    {
+        var doc = ExamSubmissionBuilder.Build(this);
+        var json = ExamSubmissionDocument.Serialize(doc);
+        var path = Path.Combine(Path.GetTempPath(), $"submission_{doc.CnnId}_{Guid.NewGuid():N}.json");
+        await File.WriteAllTextAsync(path, json, ct);
+        try
+        {
+            var upload = await apiClient.UploadFileAsync(path, "answer", ct);
+            var url = upload.Url?.Trim();
+            return string.IsNullOrEmpty(url) ? null : url;
+        }
+        finally
+        {
+            try { File.Delete(path); } catch { /* ignore */ }
+        }
     }
 
     protected override void OnAfterSelectedPageChanged(BlankPageDefinition? value)

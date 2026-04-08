@@ -286,6 +286,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <StackPanel Grid.Row="0" Margin="0,0,0,6">
                                 <TextBlock FontWeight="SemiBold" Text="Бланки" />
@@ -296,10 +297,22 @@
                                            Text="Масштаб бланка:" />
                                 <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0" MinWidth="44"
                                            Text="{Binding Exam.BlankPanelZoom, StringFormat={}{0:P0}}" />
-                                <Slider Minimum="0.5" Maximum="2.5" SmallChange="0.05" LargeChange="0.15"
+                                <Slider Minimum="0.65" Maximum="5" SmallChange="0.05" LargeChange="0.2"
                                         Value="{Binding Exam.BlankPanelZoom, Mode=TwoWay}" />
                             </DockPanel>
-                            <WrapPanel Grid.Row="2" Orientation="Horizontal">
+                            <WrapPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Center"
+                                       Margin="0,0,0,6">
+                                <TextBlock VerticalAlignment="Center" Margin="0,0,12,4" MaxWidth="520"
+                                           TextWrapping="Wrap" FontSize="11" Opacity="0.88"
+                                           Text="Зона с чернилами: Tab — ввод текста, Esc — ручка, двойной щелчок по штрихам — правка текста. «Отменить штрих» и «Ластик» относятся к зоне, с которой вы недавно работали." />
+                                <ui:Button Margin="0,0,6,4" Appearance="Secondary" Content="Отменить штрих"
+                                           Click="OnBlankUndoInkClick"
+                                           ToolTip="Убрать последний штрих в активной зоне рисования" />
+                                <ui:Button Margin="0,0,6,4" Appearance="Secondary" Content="Ластик"
+                                           Click="OnBlankInkEraserToggleClick"
+                                           ToolTip="Касанием удалять штрихи. Повторный щелчок — снова ручка." />
+                            </WrapPanel>
+                            <WrapPanel Grid.Row="3" Orientation="Horizontal">
                                 <ComboBox Width="220" Margin="0,0,8,4"
                                           ItemsSource="{Binding Exam.Pages}"
                                           SelectedItem="{Binding Exam.SelectedPage, Mode=TwoWay}"
@@ -327,6 +340,13 @@
                                 <ui:Button Margin="0,0,6,4" Appearance="Primary"
                                            Content="Завершить и проверить"
                                            Command="{Binding Exam.FinishAndGradeCommand}" />
+                                <ui:Button Margin="0,0,6,4" Appearance="Secondary"
+                                           Content="Загрузить ответ для эксперта"
+                                           Command="{Binding UploadSubmissionForReviewCommand}"
+                                           ToolTip="Собрать JSON (бланк + ответы), загрузить в category answer, подставить URL на вкладке «Проверки»" />
+                                <ui:Button Margin="0,0,6,4" Appearance="Secondary"
+                                           Content="Сохранить пакет локально"
+                                           Command="{Binding SaveSubmissionLocalCommand}" />
                             </WrapPanel>
                         </Grid>
 

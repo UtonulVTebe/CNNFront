@@ -45,6 +45,9 @@ public interface IApiClient
     /// <summary>GET текста по абсолютному или относительному URL (файлы с API; при необходимости — Bearer).</summary>
     Task<string> DownloadTextAsync(string url, CancellationToken ct = default);
 
+    /// <summary>GET бинарных данных (изображения бланков) с Bearer при необходимости.</summary>
+    Task<byte[]> DownloadBytesAsync(string url, CancellationToken ct = default);
+
     // Users (Admin)
     Task<PaginatedResponse<UserListItemDto>> GetUsersAsync(string? role = null, string? search = null, int page = 1, int pageSize = 25, CancellationToken ct = default);
     Task<UserReadDto> GetUserAsync(int id, CancellationToken ct = default);
