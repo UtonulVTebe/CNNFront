@@ -45,5 +45,20 @@ public enum ZoneFieldType
     ShortAnswer = 1,
     LongAnswer = 2,
     FreeForm = 3,
-    Correction = 4
+    Correction = 4,
+    /// <summary>Сетка ячеек (бланк №2 и т.п.).</summary>
+    CellGrid = 5,
+    /// <summary>Зона для рукописного/графического ответа (canvas на клиенте).</summary>
+    Drawing = 6
+}
+
+/// <summary>Способ ввода в зоне на клиенте проверки.</summary>
+public enum ZoneInputMode
+{
+    /// <summary>По ячейкам (по умолчанию для старых шаблонов).</summary>
+    Cell = 0,
+    /// <summary>Свободный текст.</summary>
+    Text = 1,
+    /// <summary>Рисование (математика/физика).</summary>
+    Drawing = 2
 }

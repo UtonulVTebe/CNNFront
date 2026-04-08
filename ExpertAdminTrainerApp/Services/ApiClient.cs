@@ -143,6 +143,48 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
         return await ReadAsAsync<FileUploadResponseDto>(response, ct);
     }
 
+    public async Task<string> DownloadTextAsync(string url, CancellationToken ct = default)
+    {
+        var uri = ResolveRequestUri(url);
+        var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        if (!string.IsNullOrWhiteSpace(tokenStore.AccessToken))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenStore.AccessToken);
+
+        var response = await httpClient.SendAsync(request, ct);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized && await TryRefreshAsync(ct))
+        {
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenStore.AccessToken);
+            response = await httpClient.SendAsync(request, ct);
+        }
+
+        var text = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            ApiErrorDto? error = null;
+            try { error = JsonSerializer.Deserialize<ApiErrorDto>(text, _jsonOptions); }
+            catch { /* ignored */ }
+
+            var message = error?.Message ?? error?.Detail ?? error?.Title
+                ?? $"HTTP {(int)response.StatusCode}";
+            var body = text.Length <= 500 ? text : text[..500] + "…";
+            throw new InvalidOperationException($"{message} | {body}");
+        }
+
+        return text;
+    }
+
+    private Uri ResolveRequestUri(string url)
+    {
+        if (Uri.TryCreate(url, UriKind.Absolute, out var absolute))
+            return absolute;
+
+        var baseUri = httpClient.BaseAddress
+            ?? throw new InvalidOperationException("HttpClient.BaseAddress не задан.");
+        return new Uri(baseUri, url.TrimStart('/'));
+    }
+
     // ===== Users =====
 
     public Task<PaginatedResponse<UserListItemDto>> GetUsersAsync(

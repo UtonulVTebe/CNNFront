@@ -23,6 +23,13 @@ public partial class BlankViewerViewModel(BlankTemplateService templateService) 
     public ObservableCollection<BlankPageDefinition> Pages { get; } = [];
     public ObservableCollection<ZoneDefinition> CurrentZones { get; } = [];
 
+    /// <summary>Позволяет UI (канве конструктора) сделать одну перерисовку при массовом изменении <see cref="CurrentZones"/>.</summary>
+    public event Action? ZonesListRefreshStarting;
+    public event Action? ZonesListRefreshCompleted;
+
+    protected void RaiseZonesListRefreshStarting() => ZonesListRefreshStarting?.Invoke();
+    protected void RaiseZonesListRefreshCompleted() => ZonesListRefreshCompleted?.Invoke();
+
     protected BlankTemplateService TemplateService => templateService;
 
     public bool HasTemplate => CurrentTemplate is not null;
@@ -47,20 +54,33 @@ public partial class BlankViewerViewModel(BlankTemplateService templateService) 
     partial void OnSelectedPageChanged(BlankPageDefinition? value)
     {
         OnPropertyChanged(nameof(HasSelectedPage));
-        CurrentZones.Clear();
         SelectedZone = null;
 
-        if (value is not null)
+        RaiseZonesListRefreshStarting();
+        try
         {
-            foreach (var zone in value.Zones)
-                CurrentZones.Add(zone);
-            LoadPageImage(value.ImagePath);
+            CurrentZones.Clear();
+            if (value is not null)
+            {
+                foreach (var zone in value.Zones)
+                    CurrentZones.Add(zone);
+                LoadPageImage(value.ImagePath);
+            }
+            else
+            {
+                PageImageSource = null;
+            }
         }
-        else
+        finally
         {
-            PageImageSource = null;
+            RaiseZonesListRefreshCompleted();
         }
+
+        OnAfterSelectedPageChanged(value);
     }
+
+    /// <summary>Вызывается после смены страницы (очистка выделения, undo и т.д. в наследниках).</summary>
+    protected virtual void OnAfterSelectedPageChanged(BlankPageDefinition? value) { }
 
     [RelayCommand]
     protected virtual async Task LoadTemplate(int cnnId)

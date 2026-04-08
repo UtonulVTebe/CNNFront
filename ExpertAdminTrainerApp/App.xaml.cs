@@ -49,6 +49,7 @@ public partial class App : Application
         });
 
         services.AddSingleton<BlankTemplateService>();
+        services.AddSingleton<BlankTemplateSyncService>();
         services.AddSingleton<BlankConstructorViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();

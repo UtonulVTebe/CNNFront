@@ -27,6 +27,20 @@ public class ZoneDefinition
 
     [JsonPropertyName("height")]
     public float Height { get; set; }
+
+    /// <summary>Идентификатор группы для совместного переноса (ряд ячеек и т.д.).</summary>
+    [JsonPropertyName("groupId")]
+    public string? GroupId { get; set; }
+
+    /// <summary>Семантика поля ЕГЭ: region_code, ppe_code, passport_id и т.д.</summary>
+    [JsonPropertyName("fieldRole")]
+    public string? FieldRole { get; set; }
+
+    [JsonPropertyName("inputMode")]
+    public ZoneInputMode InputMode { get; set; } = ZoneInputMode.Cell;
+
+    [JsonPropertyName("validation")]
+    public ZoneValidationRules? Validation { get; set; }
 }
 
 public class BlankPageDefinition
@@ -57,4 +71,8 @@ public class BlankTemplateDefinition
 
     [JsonPropertyName("pages")]
     public List<BlankPageDefinition> Pages { get; set; } = [];
+
+    /// <summary>Эталонные ответы по номеру задания для локальной автопроверки.</summary>
+    [JsonPropertyName("autoAnswers")]
+    public List<AutoAnswerEntry> AutoAnswers { get; set; } = [];
 }

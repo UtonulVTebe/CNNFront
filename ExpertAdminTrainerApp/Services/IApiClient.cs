@@ -38,6 +38,9 @@ public interface IApiClient
     // Files
     Task<FileUploadResponseDto> UploadFileAsync(string filePath, string category, CancellationToken ct = default);
 
+    /// <summary>GET текста по абсолютному или относительному URL (файлы с API; при необходимости — Bearer).</summary>
+    Task<string> DownloadTextAsync(string url, CancellationToken ct = default);
+
     // Users (Admin)
     Task<PaginatedResponse<UserListItemDto>> GetUsersAsync(string? role = null, string? search = null, int page = 1, int pageSize = 25, CancellationToken ct = default);
     Task<UserReadDto> GetUserAsync(int id, CancellationToken ct = default);

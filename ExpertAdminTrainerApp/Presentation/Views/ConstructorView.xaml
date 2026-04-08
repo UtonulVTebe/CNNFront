@@ -19,8 +19,18 @@
                                Command="{Binding SaveTemplateCommand}" />
                     <ui:Button Content="Экспорт JSON" Appearance="Secondary" Margin="0,0,6,0"
                                Command="{Binding ExportTemplateCommand}" />
-                    <ui:Button Content="Импорт JSON" Appearance="Secondary"
+                    <ui:Button Content="Импорт JSON" Appearance="Secondary" Margin="0,0,6,0"
                                Command="{Binding ImportTemplateCommand}" />
+                    <ui:Button Content="На сервер" Appearance="Secondary" Margin="0,0,6,0"
+                               Command="{Binding PushBlankTemplateToServerCommand}"
+                               ToolTip="Загрузить JSON разметки как файл и привязать материал «Бланки» с заголовком «Разметка бланков (JSON)»" />
+                    <ui:Button Content="С сервера" Appearance="Secondary" Margin="0,0,6,0"
+                               Command="{Binding PullBlankTemplateFromServerCommand}"
+                               ToolTip="Скачать JSON по материалу «Разметка бланков (JSON)» для выбранного КИМ" />
+                    <ui:Button Content="↶ Отмена" Margin="0,0,6,0"
+                               Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" />
+                    <ui:Button Content="↷ Вернуть"
+                               Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" />
                 </WrapPanel>
             </DockPanel>
         </Border>
@@ -75,6 +85,30 @@
                             <ui:Button Content="Удалить страницу" Appearance="Danger"
                                        Command="{Binding RemovePageCommand}" />
                         </WrapPanel>
+
+                        <Separator Margin="0,16,0,12" />
+                        <ui:TextBlock FontTypography="Subtitle" Text="Эталоны автопроверки (по заданию)" Margin="0,0,0,6" />
+                        <TextBlock TextWrapping="Wrap" Opacity="0.5" FontSize="11" Margin="0,0,0,6"
+                                   Text="Сохраняются в JSON вместе с шаблоном; проверка на клиенте." />
+                        <DataGrid ItemsSource="{Binding AutoAnswersEdit}" AutoGenerateColumns="False"
+                                  CanUserAddRows="False" HeadersVisibility="Column" MaxHeight="160"
+                                  Margin="0,0,0,6">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="№ задания" Binding="{Binding TaskId}" Width="80" />
+                                <DataGridTextColumn Header="Ответ" Binding="{Binding Answer}" Width="*" />
+                                <DataGridTemplateColumn Width="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ui:Button Content="✕" Appearance="Transparent"
+                                                       Command="{Binding DataContext.RemoveAutoAnswerRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                       CommandParameter="{Binding}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <ui:Button Content="+ Строка эталона" Appearance="Secondary"
+                                   Command="{Binding AddAutoAnswerRowCommand}" HorizontalAlignment="Left" />
                     </StackPanel>
 
                     <Border Grid.Column="1" Background="{DynamicResource ControlFillColorDefaultBrush}"
@@ -94,26 +128,30 @@
                 <Grid Margin="4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="230" />
+                        <ColumnDefinition Width="280" />
                     </Grid.ColumnDefinitions>
 
                     <DockPanel Grid.Column="0" Margin="0,0,8,0">
                         <Border DockPanel.Dock="Top" Padding="8" Margin="0,0,0,4"
                                 Background="{DynamicResource ControlFillColorDefaultBrush}" CornerRadius="6">
-                            <WrapPanel>
-                                <ui:Button Content="⇦ Выбрать" Margin="0,0,6,0" Command="{Binding SetModeSelectCommand}" />
-                                <ui:Button Content="▪ Ячейка" Margin="0,0,6,0" Command="{Binding SetModeStampSingleCommand}" />
-                                <ui:Button Content="▪▪▪ Ряд" Margin="0,0,12,0" Command="{Binding SetModeStampRowCommand}" />
-                                <Separator Margin="0,0,12,0" />
-                                <TextBlock Text="Кол-во:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
-                                <ui:TextBox Width="45" Text="{Binding RowCellCount}" Margin="0,0,10,0" />
-                                <TextBlock Text="Ш%:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
-                                <ui:TextBox Width="45" Text="{Binding CellWidth}" Margin="0,0,6,0" />
-                                <TextBlock Text="В%:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
-                                <ui:TextBox Width="45" Text="{Binding CellHeight}" Margin="0,0,6,0" />
-                                <TextBlock Text="Зазор%:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
-                                <ui:TextBox Width="45" Text="{Binding CellGap}" />
-                            </WrapPanel>
+                            <StackPanel>
+                                <WrapPanel>
+                                    <ui:Button Content="⇦ Выбрать" Margin="0,0,6,0" Command="{Binding SetModeSelectCommand}" />
+                                    <ui:Button Content="▪ Ячейка" Margin="0,0,6,0" Command="{Binding SetModeStampSingleCommand}" />
+                                    <ui:Button Content="▪▪▪ Ряд" Margin="0,0,12,0" Command="{Binding SetModeStampRowCommand}" />
+                                    <Separator Margin="0,0,12,0" />
+                                    <TextBlock Text="Кол-во:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
+                                    <ui:TextBox Width="45" Text="{Binding RowCellCount}" Margin="0,0,10,0" />
+                                    <TextBlock Text="Ш%:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
+                                    <ui:TextBox Width="45" Text="{Binding CellWidth}" Margin="0,0,6,0" />
+                                    <TextBlock Text="В%:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
+                                    <ui:TextBox Width="45" Text="{Binding CellHeight}" Margin="0,0,6,0" />
+                                    <TextBlock Text="Зазор%:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
+                                    <ui:TextBox Width="45" Text="{Binding CellGap}" />
+                                </WrapPanel>
+                                <TextBlock TextWrapping="Wrap" Opacity="0.55" FontSize="11" Margin="0,6,0,0"
+                                           Text="Режим «Выбрать»: Ctrl или Alt + клик — добавить/убрать зону в выделении. Shift+клик по зоне с группой — вся группа. Перетаскивание двигает всё выделение. Список зон справа всегда оставляет одну зону — для нескольких зон выделяйте на бланке." />
+                            </StackPanel>
                         </Border>
 
                         <Border DockPanel.Dock="Top" Padding="6,4" Margin="0,0,0,4">
@@ -135,7 +173,10 @@
                                     Focusable="True"
                                     ImageSource="{Binding PageImageSource}"
                                     Zones="{Binding CurrentZones}"
-                                    SelectedZone="{Binding SelectedZone, Mode=TwoWay}"
+                                    SelectedZone="{Binding SelectedZone, Mode=OneWay}"
+                                    HighlightedZones="{Binding SelectedZones}"
+                                    SelectedZones="{Binding SelectedZones}"
+                                    PendingPreset="{Binding PendingPresetTemplate, Mode=TwoWay}"
                                     EditorMode="{Binding EditorMode}"
                                     StampFieldType="{Binding StampFieldType}"
                                     StampFieldName="{Binding StampFieldName}"
@@ -145,28 +186,65 @@
                                     RowCellCount="{Binding RowCellCount}"
                                     CellGapPercent="{Binding CellGap}"
                                     ZoneAdded="OnEditorZoneAdded"
-                                    ZoneSelected="OnEditorZoneSelected" />
+                                    ZoneSelected="OnEditorZoneSelected"
+                                    ZoneMutationStarting="OnZoneMutationStarting"
+                                    PendingPresetConsumed="OnPendingPresetConsumed" />
                             </Grid>
                         </Border>
                     </DockPanel>
 
                     <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
+                            <ui:TextBlock FontTypography="BodyStrong" Text="Пресеты (клик — затем по бланку)" Margin="0,0,0,6" />
+                            <ListBox ItemsSource="{Binding ZonePresets}" MaxHeight="200" Margin="0,0,0,10"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" FontSize="11" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        <EventSetter Event="MouseDoubleClick" Handler="OnPresetDoubleClick" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                            </ListBox>
+
                             <ui:TextBlock FontTypography="BodyStrong" Text="Параметры штампа" Margin="0,0,0,8" />
                             <TextBlock Text="Имя поля" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
                             <ui:TextBox Text="{Binding StampFieldName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
                             <TextBlock Text="Тип поля" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
-                            <ComboBox ItemsSource="{Binding FieldTypeOptions}" SelectedItem="{Binding StampFieldType}" Margin="0,0,0,6" />
+                            <ComboBox ItemsSource="{Binding FieldTypes}" SelectedItem="{Binding StampFieldType}" Margin="0,0,0,6" />
                             <TextBlock Text="Номер задания" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
-                            <ui:TextBox Text="{Binding StampTaskNumber}" Margin="0,0,0,12" />
+                            <ui:TextBox Text="{Binding StampTaskNumber}" Margin="0,0,0,8" />
+
+                            <Expander Header="Дополнительно (JSON / автопроверка)" IsExpanded="False" Margin="0,0,0,8">
+                                <StackPanel Margin="0,6,0,0">
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.65" Margin="0,0,0,8"
+                                               Text="Обычно достаточно имени, типа и номера задания. Ниже — для экспорта шаблона и будущего клиента проверки: «роль» — стабильный код смысла (как в пресетах), «режим ввода» — ячейки или текст/рисунок. Эталоны автопроверки задаются в таблице на шаге 1 (по номеру задания)." />
+                                    <TextBlock Text="Роль поля (fieldRole)" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
+                                    <ui:TextBox Text="{Binding StampFieldRole, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
+                                    <TextBlock Text="Режим ввода на клиенте" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
+                                    <ComboBox ItemsSource="{Binding InputModes}" SelectedItem="{Binding StampInputMode}" />
+                                </StackPanel>
+                            </Expander>
 
                             <StackPanel Visibility="{Binding HasSelectedZone, Converter={StaticResource BoolVis}}">
                                 <Separator Margin="0,0,0,8" />
-                                <ui:TextBlock FontTypography="BodyStrong" Text="Выбранная зона" Margin="0,0,0,8" />
-                                <ui:Button Content="Применить параметры" Appearance="Primary" Margin="0,0,0,4"
+                                <ui:TextBlock FontTypography="BodyStrong" Text="Выбранные зоны" Margin="0,0,0,8" />
+                                <ui:Button Content="Применить к выделенным" Appearance="Primary" Margin="0,0,0,4"
                                            Command="{Binding UpdateSelectedZoneCommand}" />
-                                <ui:Button Content="Удалить зону" Appearance="Danger"
+                                <ui:Button Content="Удалить выделенные" Appearance="Danger" Margin="0,0,0,4"
                                            Command="{Binding DeleteSelectedZoneCommand}" />
+                                <ui:Button Content="Удалить всю группу" Appearance="Danger" Margin="0,0,0,4"
+                                           Command="{Binding DeleteSelectedGroupCommand}" />
+                                <ui:Button Content="Зазор группы (из панели)" Margin="0,0,0,4"
+                                           Command="{Binding ApplyGroupGapCommand}" />
+                                <ui:Button Content="Сгруппировать выделенные" Margin="0,0,0,4"
+                                           Command="{Binding GroupSelectedZonesCommand}" />
+                                <ui:Button Content="Разгруппировать" Margin="0,0,0,4"
+                                           Command="{Binding UngroupSelectedCommand}" />
                             </StackPanel>
 
                             <Separator Margin="0,12,0,8" />
@@ -174,7 +252,8 @@
                             <TextBlock Opacity="0.5" FontSize="11" Margin="0,0,0,4">
                                 <Run Text="Всего: " /><Run Text="{Binding CurrentZones.Count, Mode=OneWay}" />
                             </TextBlock>
-                            <ListBox MaxHeight="240" ItemsSource="{Binding CurrentZones}" SelectedItem="{Binding SelectedZone}">
+                            <ListBox x:Name="ZonesSidebarList" MaxHeight="240" ItemsSource="{Binding CurrentZones}"
+                                     SelectionChanged="OnZonesSidebarSelectionChanged">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock FontSize="11">
@@ -212,19 +291,22 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                         </DockPanel>
-                        <DataGrid Grid.Column="1" ItemsSource="{Binding CurrentZones}"
-                                  SelectedItem="{Binding SelectedZone}"
+                        <DataGrid x:Name="ZonesOverviewGrid" Grid.Column="1" ItemsSource="{Binding CurrentZones}"
                                   AutoGenerateColumns="False" IsReadOnly="True"
                                   CanUserSortColumns="True" CanUserReorderColumns="True"
-                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" SelectionMode="Single">
+                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" SelectionMode="Single"
+                                  SelectionChanged="OnZonesOverviewSelectionChanged">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Имя поля" Binding="{Binding FieldName}" Width="*" />
-                                <DataGridTextColumn Header="Тип" Binding="{Binding FieldType}" Width="100" />
-                                <DataGridTextColumn Header="Задание" Binding="{Binding TaskNumber}" Width="70" />
-                                <DataGridTextColumn Header="X %" Binding="{Binding X, StringFormat=F1}" Width="55" />
-                                <DataGridTextColumn Header="Y %" Binding="{Binding Y, StringFormat=F1}" Width="55" />
-                                <DataGridTextColumn Header="W %" Binding="{Binding Width, StringFormat=F1}" Width="55" />
-                                <DataGridTextColumn Header="H %" Binding="{Binding Height, StringFormat=F1}" Width="55" />
+                                <DataGridTextColumn Header="Тип" Binding="{Binding FieldType}" Width="90" />
+                                <DataGridTextColumn Header="Роль" Binding="{Binding FieldRole}" Width="100" />
+                                <DataGridTextColumn Header="Ввод" Binding="{Binding InputMode}" Width="70" />
+                                <DataGridTextColumn Header="Группа" Binding="{Binding GroupId}" Width="90" />
+                                <DataGridTextColumn Header="Задание" Binding="{Binding TaskNumber}" Width="60" />
+                                <DataGridTextColumn Header="X %" Binding="{Binding X, StringFormat=F1}" Width="50" />
+                                <DataGridTextColumn Header="Y %" Binding="{Binding Y, StringFormat=F1}" Width="50" />
+                                <DataGridTextColumn Header="W %" Binding="{Binding Width, StringFormat=F1}" Width="50" />
+                                <DataGridTextColumn Header="H %" Binding="{Binding Height, StringFormat=F1}" Width="50" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>

@@ -14,7 +14,12 @@ namespace ExpertAdminTrainerApp.Presentation.ViewModels;
 /// </summary>
 public partial class BlankConstructorViewModel : BlankViewerViewModel
 {
+    private const int MaxUndoDepth = 80;
+
     private readonly IApiClient _apiClient;
+    private readonly BlankTemplateSyncService _blankTemplateSync;
+    private readonly List<List<ZoneDefinition>> _undo = [];
+    private readonly List<List<ZoneDefinition>> _redo = [];
 
     // ===== CNN Selection =====
     [ObservableProperty] private CnnListItemDto? selectedCnn;
@@ -29,22 +34,37 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
     [ObservableProperty] private int rowCellCount = 1;
     [ObservableProperty] private float cellGap = 0.2f;
 
+    /// <summary>Следующий клик по бланку вставит этот пресет (сбрасывается после вставки).</summary>
+    [ObservableProperty] private ZonePresetTemplate? pendingPresetTemplate;
+
+    [ObservableProperty] private string? stampFieldRole;
+    [ObservableProperty] private ZoneInputMode stampInputMode = ZoneInputMode.Cell;
+
     // ===== Collections =====
+    public ObservableCollection<ZoneDefinition> SelectedZones { get; } = [];
+    public ObservableCollection<AutoAnswerEntry> AutoAnswersEdit { get; } = [];
+
     public ObservableCollection<CnnListItemDto> Cnns { get; } = [];
     public IReadOnlyList<string> BlankTypeOptions { get; } = Enum.GetNames<BlankType>();
-    public IReadOnlyList<string> FieldTypeOptions { get; } = Enum.GetNames<ZoneFieldType>();
+    public IReadOnlyList<ZoneFieldType> FieldTypes { get; } = Enum.GetValues<ZoneFieldType>().ToArray();
+    public IReadOnlyList<ZoneInputMode> InputModes { get; } = Enum.GetValues<ZoneInputMode>().ToArray();
     public IReadOnlyList<string> EditorModeOptions { get; } = ["Выбрать", "Ячейка", "Ряд ячеек"];
+    public IReadOnlyList<ZonePresetTemplate> ZonePresets { get; } = ZonePresetTemplate.Catalog;
 
     // ===== Add Page =====
     [ObservableProperty] private BlankType newPageBlankType = BlankType.Registration;
 
-    public BlankConstructorViewModel(BlankTemplateService templateService, IApiClient apiClient)
+    public BlankConstructorViewModel(BlankTemplateService templateService, IApiClient apiClient, BlankTemplateSyncService blankTemplateSync)
         : base(templateService)
     {
         _apiClient = apiClient;
+        _blankTemplateSync = blankTemplateSync;
     }
 
     public bool HasSelectedZone => SelectedZone is not null;
+    public bool HasMultiSelection => SelectedZones.Count > 1;
+    public bool CanUndo => _undo.Count > 0;
+    public bool CanRedo => _redo.Count > 0;
 
     partial void OnSelectedCnnChanged(CnnListItemDto? value)
     {
@@ -54,16 +74,96 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
             CurrentTemplate = null;
     }
 
+    protected override void OnAfterSelectedPageChanged(BlankPageDefinition? value)
+    {
+        SelectedZones.Clear();
+        _undo.Clear();
+        _redo.Clear();
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(CanRedo));
+    }
+
+    /// <summary>Канва уже обновила <see cref="SelectedZones"/>; фиксируем в VM активную зону и панель свойств.</summary>
+    public void ApplyCanvasSelection(ZoneDefinition? primary)
+    {
+        SelectedZone = primary;
+        OnZoneSelectionChanged();
+    }
+
+    /// <summary>Выбор одной зоны из списка/таблицы сбрасывает мультивыбор (не вызывать при программной синхронизации списка).</summary>
+    public void SelectZoneFromSidebar(ZoneDefinition z)
+    {
+        SelectedZones.Clear();
+        SelectedZones.Add(z);
+        SelectedZone = z;
+        OnZoneSelectionChanged();
+    }
+
     public void OnZoneSelectionChanged()
     {
         OnPropertyChanged(nameof(HasSelectedZone));
+        OnPropertyChanged(nameof(HasMultiSelection));
         if (SelectedZone is not null)
         {
             StampFieldName = SelectedZone.FieldName;
             StampFieldType = SelectedZone.FieldType;
             StampTaskNumber = SelectedZone.TaskNumber;
+            StampFieldRole = SelectedZone.FieldRole;
+            StampInputMode = SelectedZone.InputMode;
         }
     }
+
+    /// <summary>Снимок зон текущей страницы до операции (вызывается из представления по событию канвы).</summary>
+    public void PushUndoSnapshot()
+    {
+        if (SelectedPage is null) return;
+        _redo.Clear();
+        _undo.Add(ZoneDefinitionCopy.CloneList(SelectedPage.Zones));
+        while (_undo.Count > MaxUndoDepth)
+            _undo.RemoveAt(0);
+
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(CanRedo));
+    }
+
+    [RelayCommand]
+    private void Undo()
+    {
+        if (SelectedPage is null || _undo.Count == 0) return;
+
+        _redo.Add(ZoneDefinitionCopy.CloneList(SelectedPage.Zones));
+        var prev = _undo[^1];
+        _undo.RemoveAt(_undo.Count - 1);
+        ApplyZonesSnapshot(prev);
+        ViewerStatus = "Отмена.";
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(CanRedo));
+    }
+
+    [RelayCommand]
+    private void Redo()
+    {
+        if (SelectedPage is null || _redo.Count == 0) return;
+
+        _undo.Add(ZoneDefinitionCopy.CloneList(SelectedPage.Zones));
+        var next = _redo[^1];
+        _redo.RemoveAt(_redo.Count - 1);
+        ApplyZonesSnapshot(next);
+        ViewerStatus = "Вернуть.";
+        OnPropertyChanged(nameof(CanUndo));
+        OnPropertyChanged(nameof(CanRedo));
+    }
+
+    private void ApplyZonesSnapshot(List<ZoneDefinition> snapshot)
+    {
+        if (SelectedPage is null) return;
+        SelectedPage.Zones = snapshot;
+        SelectedZone = null;
+        SelectedZones.Clear();
+        RefreshCurrentZones();
+    }
+
+    public void ClearPendingPreset() => PendingPresetTemplate = null;
 
     // ===== Load CNN List =====
 
@@ -98,6 +198,16 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
             };
             ViewerStatus = "Новый шаблон создан. Добавьте страницы бланков.";
         }
+
+        SyncAutoAnswersFromTemplate();
+    }
+
+    private void SyncAutoAnswersFromTemplate()
+    {
+        AutoAnswersEdit.Clear();
+        if (CurrentTemplate is null) return;
+        foreach (var e in CurrentTemplate.AutoAnswers)
+            AutoAnswersEdit.Add(new AutoAnswerEntry { TaskId = e.TaskId, Answer = e.Answer });
     }
 
     // ===== Page Management =====
@@ -160,29 +270,130 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
     [RelayCommand]
     private void SetModeStampRow() => EditorMode = ZoneEditorMode.StampRow;
 
+    [RelayCommand]
+    private void SelectPreset(ZonePresetTemplate? preset)
+    {
+        if (preset is null) return;
+        PendingPresetTemplate = preset;
+        ViewerStatus = $"Пресет «{preset.DisplayName}»: кликните по бланку для вставки.";
+    }
+
     // ===== Zone CRUD =====
 
     public void OnZoneAdded()
     {
+        // Только синхронизируем модель страницы; CurrentZones уже источник правды (та же коллекция, что на канве).
+        // RefreshCurrentZones() здесь давал Clear()+перезаливку после каждого клика/перетаскивания — мигание бланка и сбой UI.
         SyncZonesToPage();
-        RefreshCurrentZones();
-    }
-
-    public void OnZoneSelected(ZoneDefinition? zone)
-    {
-        SelectedZone = zone;
-        OnZoneSelectionChanged();
     }
 
     [RelayCommand]
     private void DeleteSelectedZone()
     {
-        if (SelectedZone is null) return;
+        if (SelectedPage is null) return;
 
-        CurrentZones.Remove(SelectedZone);
-        SelectedPage?.Zones.Remove(SelectedZone);
+        var toRemove = SelectedZones.Count > 0
+            ? SelectedZones.ToList()
+            : SelectedZone is not null ? [SelectedZone] : [];
+
+        if (toRemove.Count == 0) return;
+
+        PushUndoSnapshot();
+        foreach (var z in toRemove)
+        {
+            CurrentZones.Remove(z);
+            SelectedPage.Zones.Remove(z);
+        }
+
+        SelectedZones.Clear();
         SelectedZone = null;
-        ViewerStatus = "Зона удалена.";
+        ViewerStatus = toRemove.Count > 1 ? $"Удалено зон: {toRemove.Count}." : "Зона удалена.";
+    }
+
+    [RelayCommand]
+    private void DeleteSelectedGroup()
+    {
+        if (SelectedZone is null || string.IsNullOrEmpty(SelectedZone.GroupId) || SelectedPage is null)
+        {
+            ViewerStatus = "У выбранной зоны нет группы.";
+            return;
+        }
+
+        var gid = SelectedZone.GroupId;
+        var toRemove = CurrentZones.Where(z => z.GroupId == gid).ToList();
+        if (toRemove.Count == 0) return;
+
+        PushUndoSnapshot();
+        foreach (var z in toRemove)
+        {
+            CurrentZones.Remove(z);
+            SelectedPage.Zones.Remove(z);
+        }
+
+        SelectedZones.Clear();
+        SelectedZone = null;
+        ViewerStatus = $"Удалена группа ({toRemove.Count} зон).";
+    }
+
+    [RelayCommand]
+    private void ApplyGroupGap()
+    {
+        if (SelectedZone is null || string.IsNullOrEmpty(SelectedZone.GroupId) || SelectedPage is null)
+        {
+            ViewerStatus = "Выберите зону из группы с общим groupId.";
+            return;
+        }
+
+        var group = CurrentZones.Where(z => z.GroupId == SelectedZone.GroupId).OrderBy(z => z.X).ToList();
+        if (group.Count < 2)
+        {
+            ViewerStatus = "В группе меньше двух зон.";
+            return;
+        }
+
+        PushUndoSnapshot();
+        float x0 = group[0].X;
+        float w = group[0].Width;
+        for (var i = 0; i < group.Count; i++)
+            group[i].X = Math.Clamp(x0 + i * (w + CellGap), 0, 100 - group[i].Width);
+
+        SyncZonesToPage();
+        RefreshCurrentZones();
+        ViewerStatus = "Зазор группы применён.";
+    }
+
+    [RelayCommand]
+    private void GroupSelectedZones()
+    {
+        if (SelectedZones.Count < 2)
+        {
+            ViewerStatus = "Выберите минимум две зоны (Ctrl+клик на бланке).";
+            return;
+        }
+
+        PushUndoSnapshot();
+        var gid = Guid.NewGuid().ToString("N");
+        foreach (var z in SelectedZones)
+            z.GroupId = gid;
+
+        SyncZonesToPage();
+        RefreshCurrentZones();
+        ViewerStatus = "Зоны объединены в группу.";
+    }
+
+    [RelayCommand]
+    private void UngroupSelected()
+    {
+        if (SelectedZones.Count == 0 && SelectedZone is null)
+            return;
+
+        PushUndoSnapshot();
+        foreach (var z in SelectedZones.Count > 0 ? SelectedZones.ToList() : [SelectedZone!])
+            z.GroupId = null;
+
+        SyncZonesToPage();
+        RefreshCurrentZones();
+        ViewerStatus = "Группа снята.";
     }
 
     [RelayCommand]
@@ -190,9 +401,29 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
     {
         if (SelectedZone is null) return;
 
+        if (SelectedZones.Count > 1)
+        {
+            PushUndoSnapshot();
+            foreach (var z in SelectedZones)
+            {
+                z.FieldName = StampFieldName;
+                z.FieldType = StampFieldType;
+                z.TaskNumber = StampTaskNumber;
+                z.FieldRole = string.IsNullOrWhiteSpace(StampFieldRole) ? null : StampFieldRole.Trim();
+                z.InputMode = StampInputMode;
+            }
+
+            SyncZonesToPage();
+            RefreshCurrentZones();
+            ViewerStatus = $"Обновлено зон: {SelectedZones.Count}.";
+            return;
+        }
+
         SelectedZone.FieldName = StampFieldName;
         SelectedZone.FieldType = StampFieldType;
         SelectedZone.TaskNumber = StampTaskNumber;
+        SelectedZone.FieldRole = string.IsNullOrWhiteSpace(StampFieldRole) ? null : StampFieldRole.Trim();
+        SelectedZone.InputMode = StampInputMode;
 
         SyncZonesToPage();
         RefreshCurrentZones();
@@ -208,6 +439,7 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
         try
         {
             SyncZonesToPage();
+            CurrentTemplate.AutoAnswers = [.. AutoAnswersEdit];
             await TemplateService.SaveTemplateAsync(CurrentTemplate);
             ViewerStatus = $"Шаблон сохранен (CNN #{CurrentTemplate.CnnId}).";
         }
@@ -233,6 +465,7 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
         try
         {
             SyncZonesToPage();
+            CurrentTemplate.AutoAnswers = [.. AutoAnswersEdit];
             await TemplateService.SaveTemplateAsync(CurrentTemplate);
             await TemplateService.ExportTemplateAsync(CurrentTemplate.CnnId, dlg.FileName);
             ViewerStatus = $"Шаблон экспортирован: {dlg.FileName}";
@@ -259,6 +492,7 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
             if (template is not null)
             {
                 CurrentTemplate = template;
+                SyncAutoAnswersFromTemplate();
                 ViewerStatus = $"Шаблон импортирован: {template.Subject} (вариант {template.Option})";
             }
         }
@@ -268,14 +502,96 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
         }
     }
 
+    /// <summary>Загрузка JSON разметки на сервер (файл + материал «Бланки» с фиксированным заголовком).</summary>
+    [RelayCommand]
+    private async Task PushBlankTemplateToServer()
+    {
+        if (CurrentTemplate is null)
+        {
+            ViewerStatus = "Нет шаблона для отправки.";
+            return;
+        }
+
+        if (SelectedCnn is not null && SelectedCnn.Id != CurrentTemplate.CnnId)
+        {
+            ViewerStatus = "Выбран другой вариант КИМ в списке — выберите тот же, что и в шаблоне, или сохраните шаблон под нужным CNN.";
+            return;
+        }
+
+        try
+        {
+            SyncZonesToPage();
+            CurrentTemplate.AutoAnswers = [.. AutoAnswersEdit];
+            await _blankTemplateSync.PushAsync(CurrentTemplate);
+            await TemplateService.SaveTemplateAsync(CurrentTemplate);
+            ViewerStatus = $"Шаблон отправлен на сервер (CNN #{CurrentTemplate.CnnId}, материал «{BlankTemplateSyncService.RemoteMaterialTitle}»).";
+        }
+        catch (Exception ex)
+        {
+            ViewerStatus = $"Ошибка отправки на сервер: {ex.Message}";
+        }
+    }
+
+    /// <summary>Скачивание JSON разметки с сервера по выбранному КИМ.</summary>
+    [RelayCommand]
+    private async Task PullBlankTemplateFromServer()
+    {
+        if (SelectedCnn is null)
+        {
+            ViewerStatus = "Выберите вариант КИМ в списке.";
+            return;
+        }
+
+        try
+        {
+            var template = await _blankTemplateSync.PullAsync(SelectedCnn.Id);
+            if (template is null)
+            {
+                ViewerStatus =
+                    $"На сервере нет материала «{BlankTemplateSyncService.RemoteMaterialTitle}» (вид «Бланки») для CNN #{SelectedCnn.Id}. Сначала отправьте шаблон с этой машины или создайте материал вручную.";
+                return;
+            }
+
+            CurrentTemplate = template;
+            SyncAutoAnswersFromTemplate();
+            await TemplateService.SaveTemplateAsync(template);
+            ViewerStatus = $"Шаблон загружен с сервера: {template.Subject} (вариант {template.Option}).";
+        }
+        catch (Exception ex)
+        {
+            ViewerStatus = $"Ошибка загрузки с сервера: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void AddAutoAnswerRow()
+    {
+        AutoAnswersEdit.Add(new AutoAnswerEntry { TaskId = 1, Answer = string.Empty });
+    }
+
+    [RelayCommand]
+    private void RemoveAutoAnswerRow(AutoAnswerEntry? row)
+    {
+        if (row is not null)
+            AutoAnswersEdit.Remove(row);
+    }
+
     // ===== Helpers =====
 
     private void RefreshCurrentZones()
     {
         if (SelectedPage is null) return;
-        CurrentZones.Clear();
-        foreach (var z in SelectedPage.Zones)
-            CurrentZones.Add(z);
+        RaiseZonesListRefreshStarting();
+        try
+        {
+            CurrentZones.Clear();
+            foreach (var z in SelectedPage.Zones)
+                CurrentZones.Add(z);
+        }
+        finally
+        {
+            RaiseZonesListRefreshCompleted();
+        }
     }
 
     public static string GetBlankTypeLabel(BlankType type) => type switch

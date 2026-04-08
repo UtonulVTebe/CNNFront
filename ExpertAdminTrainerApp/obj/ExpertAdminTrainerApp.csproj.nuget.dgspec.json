@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Maksim\\Documents\\GitHub\\CNNFront\\ExpertAdminTrainerApp\\ExpertAdminTrainerApp.csproj": {}
+    "c:\\Users\\Maksim\\Documents\\GitHub\\CNNFront\\ExpertAdminTrainerApp\\ExpertAdminTrainerApp.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Maksim\\Documents\\GitHub\\CNNFront\\ExpertAdminTrainerApp\\ExpertAdminTrainerApp.csproj": {
+    "c:\\Users\\Maksim\\Documents\\GitHub\\CNNFront\\ExpertAdminTrainerApp\\ExpertAdminTrainerApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Maksim\\Documents\\GitHub\\CNNFront\\ExpertAdminTrainerApp\\ExpertAdminTrainerApp.csproj",
+        "projectUniqueName": "c:\\Users\\Maksim\\Documents\\GitHub\\CNNFront\\ExpertAdminTrainerApp\\ExpertAdminTrainerApp.csproj",
         "projectName": "ExpertAdminTrainerApp",
-        "projectPath": "C:\\Users\\Maksim\\Documents\\GitHub\\CNNFront\\ExpertAdminTrainerApp\\ExpertAdminTrainerApp.csproj",
+        "projectPath": "c:\\Users\\Maksim\\Documents\\GitHub\\CNNFront\\ExpertAdminTrainerApp\\ExpertAdminTrainerApp.csproj",
         "packagesPath": "C:\\Users\\Maksim\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Maksim\\Documents\\GitHub\\CNNFront\\ExpertAdminTrainerApp\\obj\\",
+        "outputPath": "c:\\Users\\Maksim\\Documents\\GitHub\\CNNFront\\ExpertAdminTrainerApp\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

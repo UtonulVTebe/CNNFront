@@ -7,7 +7,8 @@ namespace ExpertAdminTrainerApp.Services;
 
 public class BlankTemplateService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    /// <summary>Опции JSON для шаблона бланков (локально и при обмене с сервером).</summary>
+    public static readonly JsonSerializerOptions TemplateJsonOptions = new()
     {
         WriteIndented = true,
         PropertyNameCaseInsensitive = true,
@@ -25,11 +26,16 @@ public class BlankTemplateService
 
     public string TemplatesDirectory => _templatesDir;
 
+    public static string SerializeTemplate(BlankTemplateDefinition template) =>
+        JsonSerializer.Serialize(template, TemplateJsonOptions);
+
+    public static BlankTemplateDefinition? DeserializeTemplate(string json) =>
+        JsonSerializer.Deserialize<BlankTemplateDefinition>(json, TemplateJsonOptions);
+
     public async Task SaveTemplateAsync(BlankTemplateDefinition template)
     {
         var path = GetTemplatePath(template.CnnId);
-        var json = JsonSerializer.Serialize(template, JsonOptions);
-        await File.WriteAllTextAsync(path, json);
+        await File.WriteAllTextAsync(path, SerializeTemplate(template));
     }
 
     public async Task<BlankTemplateDefinition?> LoadTemplateAsync(int cnnId)
@@ -39,7 +45,7 @@ public class BlankTemplateService
             return null;
 
         var json = await File.ReadAllTextAsync(path);
-        return JsonSerializer.Deserialize<BlankTemplateDefinition>(json, JsonOptions);
+        return DeserializeTemplate(json);
     }
 
     public async Task ExportTemplateAsync(int cnnId, string destinationPath)
@@ -58,7 +64,7 @@ public class BlankTemplateService
             throw new FileNotFoundException($"File not found: {sourcePath}");
 
         var json = await File.ReadAllTextAsync(sourcePath);
-        var template = JsonSerializer.Deserialize<BlankTemplateDefinition>(json, JsonOptions);
+        var template = DeserializeTemplate(json);
 
         if (template is not null)
             await SaveTemplateAsync(template);
