@@ -29,10 +29,13 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
 
     [ObservableProperty] private string resultSummaryText = string.Empty;
 
-    /// <summary>Масштаб панели бланка (1.0 = 100%).</summary>
-    [ObservableProperty] private double blankPanelZoom = 1.75;
+    /// <summary>Масштаб панели бланка (1.0 = 100%). Согласован с MinWidth/MinHeight канвы бланка.</summary>
+    [ObservableProperty] private double blankPanelZoom = 0.78;
 
     public ObservableCollection<TaskGradeResult> GradingResults { get; } = [];
+
+    /// <summary>Панель отмены штриха и ластика — только для бланка ответов №2.</summary>
+    public bool ShowAnswerSheet2InkTools => SelectedPage?.BlankType == BlankType.AnswerSheet2;
 
     public bool CanAddAnswerSheet2 =>
         CurrentTemplate is not null
@@ -59,6 +62,7 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
 
         UpdateStepLabel();
         OnPropertyChanged(nameof(CanAddAnswerSheet2));
+        OnPropertyChanged(nameof(ShowAnswerSheet2InkTools));
     }
 
     public void ClearSession()
@@ -74,8 +78,9 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
         CurrentStepLabel = string.Empty;
         _templateJsonMaterialUrl = null;
         CurrentPageIndex = 0;
-        BlankPanelZoom = 1.75;
+        BlankPanelZoom = 0.78;
         OnPropertyChanged(nameof(CanAddAnswerSheet2));
+        OnPropertyChanged(nameof(ShowAnswerSheet2InkTools));
     }
 
     public string? GetAnswer(string key) =>
@@ -124,6 +129,7 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
         OnPropertyChanged(nameof(CanGoPrevious));
         OnPropertyChanged(nameof(CanGoNext));
         OnPropertyChanged(nameof(CanAddAnswerSheet2));
+        OnPropertyChanged(nameof(ShowAnswerSheet2InkTools));
     }
 
     private void UpdateStepLabel()

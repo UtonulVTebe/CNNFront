@@ -189,8 +189,20 @@ public class BlankFillCanvas : BlankDisplayCanvas
     private static void ApplyDefaultInkPen(InkCanvas ink)
     {
         var da = ink.DefaultDrawingAttributes;
-        da.Width = 1.15;
-        da.Height = 1.15;
+        da.Width = 2.6;
+        da.Height = 2.6;
+        da.Color = Color.FromRgb(12, 12, 18);
+        da.FitToCurve = true;
+        da.IsHighlighter = false;
+
+        ink.UseCustomCursor = true;
+        ink.Cursor = Cursors.Cross;
+        ink.EditingModeChanged += (_, _) =>
+        {
+            ink.Cursor = ink.EditingMode == InkCanvasEditingMode.EraseByStroke
+                ? Cursors.Hand
+                : Cursors.Cross;
+        };
     }
 
     private static bool WantsInteractiveInput(ZoneDefinition z) =>
@@ -252,11 +264,6 @@ public class BlankFillCanvas : BlankDisplayCanvas
         if (maxFontSize is { } cap)
             fs = Math.Min(fs, cap);
         tb.FontSize = fs;
-        if (maxFontSize is not null)
-        {
-            TextOptions.SetTextRenderingMode(tb, TextRenderingMode.Grayscale);
-            RenderOptions.SetClearTypeHint(tb, ClearTypeHint.Auto);
-        }
     }
 
     private TextBox CreateCharBox(ZoneDefinition zone, string key, IZoneAnswerSink? sink, double cellHeightPx,
@@ -310,7 +317,7 @@ public class BlankFillCanvas : BlankDisplayCanvas
             Tag = key
         };
         if (multiline)
-            ApplyEditableTextMetrics(tb, 13, pw, VerticalAlignment.Top, HorizontalAlignment.Left, 9);
+            ApplyEditableTextMetrics(tb, 12, pw, VerticalAlignment.Top, HorizontalAlignment.Left, 9);
         else
             ApplyEditableTextMetrics(tb, ph, pw, VerticalAlignment.Center, HorizontalAlignment.Left);
         tb.TextChanged += (_, _) => sink?.SetAnswer(key, string.IsNullOrEmpty(tb.Text) ? null : tb.Text);
@@ -404,7 +411,7 @@ public class BlankFillCanvas : BlankDisplayCanvas
             TabIndex = 1
         };
         const double longAnswerMaxFont = 9;
-        ApplyEditableTextMetrics(tb, 13, pw, VerticalAlignment.Top, HorizontalAlignment.Left, longAnswerMaxFont);
+        ApplyEditableTextMetrics(tb, 12, pw, VerticalAlignment.Top, HorizontalAlignment.Left, longAnswerMaxFont);
         tb.VerticalAlignment = VerticalAlignment.Stretch;
         tb.HorizontalAlignment = HorizontalAlignment.Stretch;
 

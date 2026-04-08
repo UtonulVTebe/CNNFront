@@ -170,11 +170,6 @@ public class BlankSubmissionReviewCanvas : BlankDisplayCanvas
         if (maxFontSize is { } cap)
             fs = Math.Min(fs, cap);
         tb.FontSize = fs;
-        if (maxFontSize is not null)
-        {
-            TextOptions.SetTextRenderingMode(tb, TextRenderingMode.Grayscale);
-            RenderOptions.SetClearTypeHint(tb, ClearTypeHint.Auto);
-        }
     }
 
     private void AddSingleOrRowCellsReadOnly(ZoneDefinition zone, int pageIdx, double px, double py, double pw,
@@ -251,7 +246,7 @@ public class BlankSubmissionReviewCanvas : BlankDisplayCanvas
             Focusable = false
         };
         if (multiline)
-            ApplyReadOnlyTextMetrics(tb, 13, pw, VerticalAlignment.Top, HorizontalAlignment.Left, 9);
+            ApplyReadOnlyTextMetrics(tb, 12, pw, VerticalAlignment.Top, HorizontalAlignment.Left, 9);
         else
             ApplyReadOnlyTextMetrics(tb, ph, pw, VerticalAlignment.Center, HorizontalAlignment.Left);
         _inputLayer.Children.Add(tb);
@@ -333,7 +328,7 @@ public class BlankSubmissionReviewCanvas : BlankDisplayCanvas
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
         const double longAnswerMaxFont = 9;
-        ApplyReadOnlyTextMetrics(tb, 13, pw, VerticalAlignment.Top, HorizontalAlignment.Left, longAnswerMaxFont);
+        ApplyReadOnlyTextMetrics(tb, 12, pw, VerticalAlignment.Top, HorizontalAlignment.Left, longAnswerMaxFont);
 
         var ink = new InkCanvas
         {
