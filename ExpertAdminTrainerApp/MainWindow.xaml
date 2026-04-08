@@ -11,54 +11,207 @@
                  Height="820"
                  MinWidth="980"
                  MinHeight="620"
-                 Loaded="OnLoaded"
                  WindowStartupLocation="CenterScreen"
                  ExtendsContentIntoTitleBar="True"
                  WindowBackdropType="Mica">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolVis" />
+        <SolidColorBrush x:Key="StatusBarErrorBrush" Color="#B3261E" />
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <ui:TitleBar Grid.Row="0" Title="Expert / Admin — EGE Trainer Platform" />
 
-        <!-- Auth Bar -->
-        <ui:Card Grid.Row="1" Padding="14" Margin="16,0,16,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <WrapPanel VerticalAlignment="Center">
-                    <ui:TextBox Width="240" Margin="0,0,6,0" PlaceholderText="Email"
-                                Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" />
-                    <ui:PasswordBox x:Name="PwdBox" Width="180" Margin="0,0,6,0" PlaceholderText="Пароль"
-                                    Password="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    <ui:Button Appearance="Primary" Margin="0,0,6,0" Content="Войти" Click="OnLoginClick" />
-                    <ui:Button Appearance="Secondary" Content="Выйти" Command="{Binding LogoutCommand}" />
-                </WrapPanel>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0"
-                            Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolVis}}">
-                    <TextBlock Text="{Binding UserName}" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding Role, StringFormat=Роль: {0}}" Opacity="0.6" FontSize="12" />
-                </StackPanel>
-                <ui:ProgressRing Grid.Column="2" Width="24" Height="24" IsIndeterminate="{Binding IsBusy}" />
-            </Grid>
-        </ui:Card>
-
-        <TextBlock Grid.Row="2" Text="{Binding StatusText}" Margin="20,6,20,4" Opacity="0.6" FontSize="12" />
-
-        <!-- Main Workspace -->
-        <TabControl Grid.Row="3" Margin="16,0,16,16"
+        <TabControl Grid.Row="1"
+                    Margin="16,0,16,8"
+                    Padding="0"
                     Visibility="{Binding IsAdminOrExpert, Converter={StaticResource BoolVis}}">
+            <TabControl.Template>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid ClipToBounds="True"
+                          KeyboardNavigation.TabNavigation="Local"
+                          SnapsToDevicePixels="True">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <!-- Полоса вкладок + «псевдо-вкладка» профиля -->
+                        <Border Grid.Row="0"
+                                Padding="0,4,0,0"
+                                Background="{DynamicResource ApplicationBackgroundBrush}">
+                            <Grid MinHeight="40">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TabPanel Grid.Column="0"
+                                          Panel.ZIndex="1"
+                                          Margin="0,0,4,0"
+                                          VerticalAlignment="Bottom"
+                                          Background="Transparent"
+                                          IsItemsHost="True"
+                                          KeyboardNavigation.TabIndex="1" />
+                                <!-- Профиль: одна кнопка, один текст (ФИО · роль ▾) -->
+                                <Grid Grid.Column="1"
+                                      Margin="6,0,0,0"
+                                      HorizontalAlignment="Right"
+                                      VerticalAlignment="Bottom">
+                                    <ui:Button x:Name="AccountMenuAnchor"
+                                               MinHeight="0"
+                                               Padding="0"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right"
+                                               HorizontalContentAlignment="Left"
+                                               Appearance="Transparent"
+                                               Background="Transparent"
+                                               BorderThickness="0"
+                                               Command="{Binding DataContext.ToggleAccountMenuCommand,
+                                                                 RelativeSource={RelativeSource AncestorType=Window}}"
+                                               Cursor="Hand"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+                                        <Border Padding="12,8,12,9"
+                                                VerticalAlignment="Center"
+                                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                BorderThickness="0,0,0,1"
+                                                CornerRadius="8,8,0,0">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DataContext.IsAccountMenuOpen, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid MinHeight="20">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <ui:ProgressRing Grid.Column="0"
+                                                                 Width="16"
+                                                                 Height="16"
+                                                                 Margin="0,0,10,0"
+                                                                 VerticalAlignment="Center"
+                                                                 Visibility="{Binding DataContext.IsBusy,
+                                                                                   RelativeSource={RelativeSource AncestorType=Window},
+                                                                                   Converter={StaticResource BoolVis}}"
+                                                                 IsIndeterminate="True" />
+                                                <TextBlock Grid.Column="1"
+                                                           MaxWidth="560"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="15"
+                                                           FontWeight="Bold"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           TextWrapping="NoWrap">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} · Роль: {1} ▾">
+                                                            <Binding Path="DataContext.UserName"
+                                                                     RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                            <Binding Path="DataContext.Role"
+                                                                     RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                            </Grid>
+                                        </Border>
+                                    </ui:Button>
+                                    <Popup AllowsTransparency="True"
+                                                   HorizontalOffset="0"
+                                                   IsOpen="{Binding DataContext.IsAccountMenuOpen,
+                                                                      RelativeSource={RelativeSource AncestorType=Window},
+                                                                      Mode=TwoWay}"
+                                                   Placement="Bottom"
+                                                   PlacementTarget="{Binding ElementName=AccountMenuAnchor}"
+                                                   PopupAnimation="Fade"
+                                                   StaysOpen="False">
+                                                <!-- Popup — отдельное визуальное дерево: DataContext с якоря, иначе FindAncestor Window не срабатывает и TextBox не пишет в VM. -->
+                                                <ui:Card MaxWidth="360"
+                                                         MinWidth="300"
+                                                         Padding="0"
+                                                         DataContext="{Binding DataContext, ElementName=AccountMenuAnchor}">
+                                                    <StackPanel Margin="16,14,16,16">
+                                                        <StackPanel Visibility="{Binding ShowAccountSummary, Converter={StaticResource BoolVis}}">
+                                                            <TextBlock FontSize="17"
+                                                                       FontWeight="SemiBold"
+                                                                       Text="{Binding UserName}"
+                                                                       TextWrapping="Wrap" />
+                                                            <TextBlock Margin="0,6,0,0"
+                                                                       FontSize="14"
+                                                                       Opacity="0.85"
+                                                                       Text="{Binding CurrentUserEmail}"
+                                                                       TextWrapping="Wrap"
+                                                                       Visibility="{Binding HasUserEmail, Converter={StaticResource BoolVis}}" />
+                                                            <TextBlock Margin="0,6,0,0"
+                                                                       FontSize="14"
+                                                                       Opacity="0.8"
+                                                                       Text="{Binding Role, StringFormat=Роль: {0}}" />
+                                                            <TextBlock Margin="0,6,0,0"
+                                                                       FontSize="14"
+                                                                       Opacity="0.8"
+                                                                       Text="{Binding ExpertBalanceSubtitle}"
+                                                                       Visibility="{Binding IsExpert, Converter={StaticResource BoolVis}}" />
+                                                            <ui:Button Margin="0,14,0,6"
+                                                                       HorizontalAlignment="Stretch"
+                                                                       Appearance="Primary"
+                                                                       Command="{Binding BeginEditProfileCommand}"
+                                                                       Content="Изменить профиль" />
+                                                            <ui:Button HorizontalAlignment="Stretch"
+                                                                       Appearance="Secondary"
+                                                                       Command="{Binding LogoutCommand}"
+                                                                       Content="Выйти" />
+                                                        </StackPanel>
+                                                        <StackPanel Visibility="{Binding IsProfileEditorVisible, Converter={StaticResource BoolVis}}">
+                                                            <TextBlock Margin="0,0,0,10"
+                                                                       FontWeight="SemiBold"
+                                                                       Text="Изменение имени" />
+                                                            <TextBlock Margin="0,0,0,4"
+                                                                       FontSize="13"
+                                                                       Opacity="0.85"
+                                                                       Text="Отображаемое имя" />
+                                                            <TextBox Margin="0,0,0,12"
+                                                                     Padding="8,6"
+                                                                     Text="{Binding EditableProfileName, UpdateSourceTrigger=PropertyChanged}" />
+                                                            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                                                                <ui:Button Margin="0,0,8,0"
+                                                                           Appearance="Secondary"
+                                                                           Command="{Binding CancelEditProfileCommand}"
+                                                                           Content="Назад" />
+                                                                <ui:Button Appearance="Primary"
+                                                                           Command="{Binding SaveProfileCommand}"
+                                                                           Content="Сохранить" />
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </ui:Card>
+                                    </Popup>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <Border x:Name="contentPanel"
+                                Grid.Row="1"
+                                Background="{DynamicResource ApplicationBackgroundBrush}"
+                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="0,8,8,8"
+                                KeyboardNavigation.DirectionalNavigation="Contained"
+                                KeyboardNavigation.TabIndex="2"
+                                Focusable="False">
+                            <ContentPresenter x:Name="PART_SelectedContentHost"
+                                              Margin="{TemplateBinding Padding}"
+                                              ContentSource="SelectedContent" />
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </TabControl.Template>
 
             <TabItem Header="Заказы">
                 <views:OrdersView />
@@ -83,5 +236,30 @@
                 <views:ToolsView />
             </TabItem>
         </TabControl>
+
+        <Border Grid.Row="2"
+                Padding="20,6,20,12"
+                Background="{DynamicResource ApplicationBackgroundBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="0,1,0,0">
+            <TextBlock FontSize="14"
+                       Text="{Binding StatusText}"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip="{Binding StatusText}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Opacity" Value="0.78" />
+                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding StatusBarIsError}" Value="True">
+                                <Setter Property="Opacity" Value="1" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                                <Setter Property="Foreground" Value="{StaticResource StatusBarErrorBrush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </Border>
     </Grid>
 </ui:FluentWindow>

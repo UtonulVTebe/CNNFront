@@ -24,7 +24,7 @@
                         <TextBlock Text="{Binding Title, TargetNullValue='(без названия)'}"
                                    FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding Url}" Opacity="0.55"
-                                   TextTrimming="CharacterEllipsis" FontSize="12" />
+                                   TextTrimming="CharacterEllipsis" FontSize="14" />
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <ui:Button Margin="4,0" Appearance="Transparent" Content="Открыть"
@@ -55,7 +55,7 @@
                 <DockPanel>
                     <ui:Button DockPanel.Dock="Right" Appearance="Primary" Content="+ Новый"
                                Command="{Binding BeginCreateCnnCommand}" />
-                    <ui:TextBlock FontTypography="BodyStrong" Text="Варианты КИМ" VerticalAlignment="Center" />
+                    <ui:TextBlock FontTypography="BodyStrong" FontSize="17" Text="Варианты КИМ" VerticalAlignment="Center" />
                 </DockPanel>
                 <Border Margin="0,8,0,0" Padding="10" CornerRadius="6"
                         Background="{DynamicResource ControlFillColorDefaultBrush}"
@@ -78,7 +78,7 @@
                     <DataTemplate>
                         <StackPanel Margin="4">
                             <TextBlock Text="{Binding Subject}" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding Option, StringFormat=Вариант {0}}" Opacity="0.6" FontSize="12" />
+                            <TextBlock Text="{Binding Option, StringFormat=Вариант {0}}" Opacity="0.6" FontSize="14" />
                         </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -89,7 +89,7 @@
             <Grid>
                 <TextBlock Text="Выберите вариант КИМ из списка слева"
                            VerticalAlignment="Center" HorizontalAlignment="Center"
-                           Opacity="0.4" FontSize="14"
+                           Opacity="0.4" FontSize="16"
                            Visibility="{Binding HasNoSelectedCnn, Converter={StaticResource BoolVis}}" />
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               Visibility="{Binding HasSelectedCnn, Converter={StaticResource BoolVis}}">
@@ -101,7 +101,7 @@
                                 <ui:Button Appearance="Danger" Content="Удалить" Command="{Binding DeleteCnnCommand}" />
                             </StackPanel>
                             <StackPanel>
-                                <ui:TextBlock FontTypography="Subtitle" Text="{Binding SelectedCnn.Subject}" />
+                                <ui:TextBlock FontTypography="Subtitle" FontSize="19" Text="{Binding SelectedCnn.Subject}" />
                                 <TextBlock Text="{Binding SelectedCnn.Option, StringFormat=Вариант {0}}" Opacity="0.6" />
                             </StackPanel>
                         </DockPanel>
@@ -152,11 +152,11 @@
                                                Command="{Binding BeginAddMaterialCommand}" CommandParameter="Kim" />
                                     <StackPanel>
                                         <TextBlock Text="КИМ (задания)" FontWeight="Bold" />
-                                        <TextBlock Text="Файлы с заданиями экзамена для учеников" Opacity="0.5" FontSize="12" />
+                                        <TextBlock Text="Файлы с заданиями экзамена для учеников" Opacity="0.5" FontSize="14" />
                                     </StackPanel>
                                 </DockPanel>
                                 <ItemsControl ItemsSource="{Binding KimMaterials}" ItemTemplate="{StaticResource MaterialCardTemplate}" />
-                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="12" Margin="0,4,0,0">
+                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="14" Margin="0,4,0,0">
                                     <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding KimMaterials.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                                 </TextBlock>
                             </StackPanel>
@@ -168,11 +168,11 @@
                                                Command="{Binding BeginAddMaterialCommand}" CommandParameter="Criteria" />
                                     <StackPanel>
                                         <TextBlock Text="Критерии оценивания" FontWeight="Bold" />
-                                        <TextBlock Text="Критерии проверки развернутых ответов (только для экспертов)" Opacity="0.5" FontSize="12" />
+                                        <TextBlock Text="Критерии проверки развернутых ответов (только для экспертов)" Opacity="0.5" FontSize="14" />
                                     </StackPanel>
                                 </DockPanel>
                                 <ItemsControl ItemsSource="{Binding CriteriaMaterials}" ItemTemplate="{StaticResource MaterialCardTemplate}" />
-                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="12" Margin="0,4,0,0">
+                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="14" Margin="0,4,0,0">
                                     <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding CriteriaMaterials.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                                 </TextBlock>
                             </StackPanel>
@@ -184,11 +184,11 @@
                                                Command="{Binding BeginAddMaterialCommand}" CommandParameter="Blanks" />
                                     <StackPanel>
                                         <TextBlock Text="Бланки ответов" FontWeight="Bold" />
-                                        <TextBlock Text="Шаблоны бланков, которые заполняют ученики" Opacity="0.5" FontSize="12" />
+                                        <TextBlock Text="Шаблоны бланков, которые заполняют ученики" Opacity="0.5" FontSize="14" />
                                     </StackPanel>
                                 </DockPanel>
                                 <ItemsControl ItemsSource="{Binding BlanksMaterials}" ItemTemplate="{StaticResource MaterialCardTemplate}" />
-                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="12" Margin="0,4,0,0">
+                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="14" Margin="0,4,0,0">
                                     <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding BlanksMaterials.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                                 </TextBlock>
                             </StackPanel>
@@ -200,11 +200,11 @@
                                                Command="{Binding BeginAddMaterialCommand}" CommandParameter="Other" />
                                     <StackPanel>
                                         <TextBlock Text="Прочие материалы" FontWeight="Bold" />
-                                        <TextBlock Text="Дополнительные файлы и документы" Opacity="0.5" FontSize="12" />
+                                        <TextBlock Text="Дополнительные файлы и документы" Opacity="0.5" FontSize="14" />
                                     </StackPanel>
                                 </DockPanel>
                                 <ItemsControl ItemsSource="{Binding OtherMaterials}" ItemTemplate="{StaticResource MaterialCardTemplate}" />
-                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="12" Margin="0,4,0,0">
+                                <TextBlock Text="Нет материалов" Opacity="0.35" FontSize="14" Margin="0,4,0,0">
                                     <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding OtherMaterials.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                                 </TextBlock>
                             </StackPanel>

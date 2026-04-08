@@ -9,29 +9,62 @@
     </UserControl.Resources>
 
     <DockPanel Margin="8">
-        <!-- Status Bar -->
+        <!-- Панель действий: основное слева, редкие — в меню -->
         <Border DockPanel.Dock="Bottom" Padding="8,6" Margin="0,6,0,0">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Text="{Binding ViewerStatus}" Opacity="0.6"
-                           FontSize="12" VerticalAlignment="Center" />
-                <WrapPanel>
-                    <ui:Button Content="Сохранить" Appearance="Primary" Margin="0,0,6,0"
-                               Command="{Binding SaveTemplateCommand}" />
-                    <ui:Button Content="Экспорт JSON" Appearance="Secondary" Margin="0,0,6,0"
-                               Command="{Binding ExportTemplateCommand}" />
-                    <ui:Button Content="Импорт JSON" Appearance="Secondary" Margin="0,0,6,0"
-                               Command="{Binding ImportTemplateCommand}" />
-                    <ui:Button Content="На сервер" Appearance="Secondary" Margin="0,0,6,0"
-                               Command="{Binding PushBlankTemplateToServerCommand}"
-                               ToolTip="Загрузить JSON разметки как файл и привязать материал «Бланки» с заголовком «Разметка бланков (JSON)»" />
-                    <ui:Button Content="С сервера" Appearance="Secondary" Margin="0,0,6,0"
-                               Command="{Binding PullBlankTemplateFromServerCommand}"
-                               ToolTip="Скачать JSON по материалу «Разметка бланков (JSON)» для выбранного КИМ" />
-                    <ui:Button Content="↶ Отмена" Margin="0,0,6,0"
-                               Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" />
-                    <ui:Button Content="↷ Вернуть"
-                               Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" />
-                </WrapPanel>
+                <TextBlock DockPanel.Dock="Right"
+                           MaxWidth="420"
+                           Margin="12,0,0,0"
+                           VerticalAlignment="Center"
+                           FontSize="14"
+                           Opacity="0.6"
+                           Text="{Binding ViewerStatus}"
+                           TextAlignment="Right"
+                           TextTrimming="CharacterEllipsis"
+                           TextWrapping="NoWrap" />
+                <StackPanel Orientation="Horizontal">
+                    <ui:Button Margin="0,0,6,0"
+                               Appearance="Primary"
+                               Command="{Binding SaveTemplateCommand}"
+                               Content="Сохранить" />
+                    <!-- Flyout у DropDownButton в WPF UI — только ContextMenu; ui:Flyout не открывается -->
+                    <ui:DropDownButton Margin="0,0,6,0"
+                                       Appearance="Secondary"
+                                       Content="Файл и сервер"
+                                       ToolTip="Экспорт/импорт JSON и синхронизация с API (материал «Разметка бланков»)">
+                        <ui:DropDownButton.Flyout>
+                            <ContextMenu MinWidth="260"
+                                         DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                <MenuItem Focusable="False"
+                                          FontWeight="SemiBold"
+                                          Header="Локальный файл"
+                                          IsEnabled="False" />
+                                <MenuItem Command="{Binding ExportTemplateCommand}"
+                                          Header="Экспорт JSON в файл…" />
+                                <MenuItem Command="{Binding ImportTemplateCommand}"
+                                          Header="Импорт JSON из файла…" />
+                                <Separator />
+                                <MenuItem Focusable="False"
+                                          FontWeight="SemiBold"
+                                          Header="Сервер (материал «Бланки»)"
+                                          IsEnabled="False" />
+                                <MenuItem Command="{Binding PushBlankTemplateToServerCommand}"
+                                          Header="Отправить на сервер"
+                                          ToolTip="Загрузить JSON разметки и привязать материал «Бланки» с заголовком «Разметка бланков (JSON)»" />
+                                <MenuItem Command="{Binding PullBlankTemplateFromServerCommand}"
+                                          Header="Загрузить с сервера"
+                                          ToolTip="Скачать JSON по материалу «Разметка бланков (JSON)» для выбранного КИМ" />
+                            </ContextMenu>
+                        </ui:DropDownButton.Flyout>
+                    </ui:DropDownButton>
+                    <ui:Button Margin="0,0,6,0"
+                               Command="{Binding UndoCommand}"
+                               Content="↶ Отмена"
+                               IsEnabled="{Binding CanUndo}" />
+                    <ui:Button Command="{Binding RedoCommand}"
+                               Content="↷ Вернуть"
+                               IsEnabled="{Binding CanRedo}" />
+                </StackPanel>
             </DockPanel>
         </Border>
 
@@ -47,13 +80,13 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                        <ui:TextBlock FontTypography="Subtitle" Text="Вариант КИМ" Margin="0,0,0,8" />
+                        <ui:TextBlock FontTypography="Subtitle" FontSize="19" Text="Вариант КИМ" Margin="0,0,0,8" />
                         <ComboBox ItemsSource="{Binding Cnns}" SelectedItem="{Binding SelectedCnn}"
                                   DisplayMemberPath="Subject" Margin="0,0,0,16" />
 
-                        <ui:TextBlock FontTypography="Subtitle" Text="Страницы бланков" Margin="0,0,0,8" />
+                        <ui:TextBlock FontTypography="Subtitle" FontSize="19" Text="Страницы бланков" Margin="0,0,0,8" />
                         <TextBlock Text="Выберите тип бланка и добавьте страницу. Для каждой страницы загрузите изображение (скан бланка)."
-                                   TextWrapping="Wrap" Opacity="0.5" FontSize="12" Margin="0,0,0,8" />
+                                   TextWrapping="Wrap" Opacity="0.5" FontSize="14" Margin="0,0,0,8" />
 
                         <DockPanel Margin="0,0,0,8">
                             <ui:Button DockPanel.Dock="Right" Appearance="Primary" Content="+ Добавить"
@@ -72,7 +105,7 @@
                                                 <Run Text=" — стр. " /><Run Text="{Binding PageNumber, Mode=OneWay}" />
                                             </TextBlock>
                                             <TextBlock Text="{Binding ImagePath, TargetNullValue='(изображение не загружено)'}"
-                                                       TextTrimming="CharacterEllipsis" Opacity="0.5" FontSize="11" MaxWidth="280" />
+                                                       TextTrimming="CharacterEllipsis" Opacity="0.5" FontSize="13" MaxWidth="280" />
                                         </StackPanel>
                                     </DockPanel>
                                 </DataTemplate>
@@ -87,8 +120,8 @@
                         </WrapPanel>
 
                         <Separator Margin="0,16,0,12" />
-                        <ui:TextBlock FontTypography="Subtitle" Text="Эталоны автопроверки (по заданию)" Margin="0,0,0,6" />
-                        <TextBlock TextWrapping="Wrap" Opacity="0.5" FontSize="11" Margin="0,0,0,6"
+                        <ui:TextBlock FontTypography="Subtitle" FontSize="19" Text="Эталоны автопроверки (по заданию)" Margin="0,0,0,6" />
+                        <TextBlock TextWrapping="Wrap" Opacity="0.5" FontSize="13" Margin="0,0,0,6"
                                    Text="Сохраняются в JSON вместе с шаблоном; проверка на клиенте." />
                         <DataGrid ItemsSource="{Binding AutoAnswersEdit}" AutoGenerateColumns="False"
                                   CanUserAddRows="False" HeadersVisibility="Column" MaxHeight="160"
@@ -116,7 +149,7 @@
                         <Grid>
                             <TextBlock Text="Выберите страницу и загрузите изображение бланка"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Opacity="0.3" FontSize="14" TextWrapping="Wrap" TextAlignment="Center" />
+                                       Opacity="0.3" FontSize="16" TextWrapping="Wrap" TextAlignment="Center" />
                             <Image Source="{Binding PageImageSource}" Stretch="Uniform" VerticalAlignment="Top" />
                         </Grid>
                     </Border>
@@ -152,7 +185,7 @@
                                     <TextBlock Text="Зазор%:" VerticalAlignment="Center" Margin="0,0,4,0" Opacity="0.7" />
                                     <ui:TextBox Width="45" Text="{Binding CellGap}" />
                                 </WrapPanel>
-                                <TextBlock TextWrapping="Wrap" Opacity="0.55" FontSize="11" Margin="0,6,0,0"
+                                <TextBlock TextWrapping="Wrap" Opacity="0.55" FontSize="13" Margin="0,6,0,0"
                                            Text="Режим «Выбрать»: Ctrl или Alt + клик — добавить/убрать зону в выделении. Shift+клик по зоне с группой — вся группа. «Прямоугольник»: зажать ЛКМ и протянуть. Режим «Выбрать»: перетаскивание двигает выделение. Список зон справа оставляет одну зону — для нескольких выделяйте на бланке." />
                             </StackPanel>
                         </Border>
@@ -171,7 +204,7 @@
                             <Grid>
                                 <TextBlock Text="Загрузите изображение бланка на вкладке «Настройка варианта»"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           Opacity="0.3" FontSize="14" TextWrapping="Wrap" TextAlignment="Center" />
+                                           Opacity="0.3" FontSize="16" TextWrapping="Wrap" TextAlignment="Center" />
                                 <controls:ZoneEditorCanvas x:Name="EditorCanvas"
                                     Focusable="True"
                                     ImageSource="{Binding PageImageSource}"
@@ -200,12 +233,12 @@
 
                     <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <ui:TextBlock FontTypography="BodyStrong" Text="Пресеты (клик — затем по бланку)" Margin="0,0,0,6" />
+                            <ui:TextBlock FontTypography="BodyStrong" FontSize="17" Text="Пресеты (клик — затем по бланку)" Margin="0,0,0,6" />
                             <ListBox ItemsSource="{Binding ZonePresets}" MaxHeight="200" Margin="0,0,0,10"
                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" FontSize="11" />
+                                        <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" FontSize="13" />
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                                 <ListBox.ItemContainerStyle>
@@ -216,28 +249,28 @@
                                 </ListBox.ItemContainerStyle>
                             </ListBox>
 
-                            <ui:TextBlock FontTypography="BodyStrong" Text="Параметры штампа" Margin="0,0,0,8" />
-                            <TextBlock Text="Имя поля" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
+                            <ui:TextBlock FontTypography="BodyStrong" FontSize="17" Text="Параметры штампа" Margin="0,0,0,8" />
+                            <TextBlock Text="Имя поля" Opacity="0.6" FontSize="13" Margin="0,0,0,2" />
                             <ui:TextBox Text="{Binding StampFieldName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
-                            <TextBlock Text="Тип поля" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
+                            <TextBlock Text="Тип поля" Opacity="0.6" FontSize="13" Margin="0,0,0,2" />
                             <ComboBox ItemsSource="{Binding FieldTypes}" SelectedItem="{Binding StampFieldType}" Margin="0,0,0,6" />
-                            <TextBlock Text="Номер задания" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
+                            <TextBlock Text="Номер задания" Opacity="0.6" FontSize="13" Margin="0,0,0,2" />
                             <ui:TextBox Text="{Binding StampTaskNumber}" Margin="0,0,0,8" />
 
                             <Expander Header="Дополнительно (JSON / автопроверка)" IsExpanded="False" Margin="0,0,0,8">
                                 <StackPanel Margin="0,6,0,0">
-                                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.65" Margin="0,0,0,8"
+                                    <TextBlock TextWrapping="Wrap" FontSize="13" Opacity="0.65" Margin="0,0,0,8"
                                                Text="Обычно достаточно имени, типа и номера задания. Ниже — для экспорта шаблона и будущего клиента проверки: «роль» — стабильный код смысла (как в пресетах), «режим ввода» — ячейки или текст/рисунок. Эталоны автопроверки задаются в таблице на шаге 1 (по номеру задания)." />
-                                    <TextBlock Text="Роль поля (fieldRole)" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
+                                    <TextBlock Text="Роль поля (fieldRole)" Opacity="0.6" FontSize="13" Margin="0,0,0,2" />
                                     <ui:TextBox Text="{Binding StampFieldRole, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6" />
-                                    <TextBlock Text="Режим ввода на клиенте" Opacity="0.6" FontSize="11" Margin="0,0,0,2" />
+                                    <TextBlock Text="Режим ввода на клиенте" Opacity="0.6" FontSize="13" Margin="0,0,0,2" />
                                     <ComboBox ItemsSource="{Binding InputModes}" SelectedItem="{Binding StampInputMode}" />
                                 </StackPanel>
                             </Expander>
 
                             <StackPanel Visibility="{Binding HasSelectedZone, Converter={StaticResource BoolVis}}">
                                 <Separator Margin="0,0,0,8" />
-                                <ui:TextBlock FontTypography="BodyStrong" Text="Выбранные зоны" Margin="0,0,0,8" />
+                                <ui:TextBlock FontTypography="BodyStrong" FontSize="17" Text="Выбранные зоны" Margin="0,0,0,8" />
                                 <ui:Button Content="Применить к выделенным" Appearance="Primary" Margin="0,0,0,4"
                                            Command="{Binding UpdateSelectedZoneCommand}" />
                                 <ui:Button Content="Удалить выделенные" Appearance="Danger" Margin="0,0,0,4"
@@ -253,15 +286,15 @@
                             </StackPanel>
 
                             <Separator Margin="0,12,0,8" />
-                            <ui:TextBlock FontTypography="BodyStrong" Text="Зоны на странице" Margin="0,0,0,4" />
-                            <TextBlock Opacity="0.5" FontSize="11" Margin="0,0,0,4">
+                            <ui:TextBlock FontTypography="BodyStrong" FontSize="17" Text="Зоны на странице" Margin="0,0,0,4" />
+                            <TextBlock Opacity="0.5" FontSize="13" Margin="0,0,0,4">
                                 <Run Text="Всего: " /><Run Text="{Binding CurrentZones.Count, Mode=OneWay}" />
                             </TextBlock>
                             <ListBox x:Name="ZonesSidebarList" MaxHeight="240" ItemsSource="{Binding CurrentZones}"
                                      SelectionChanged="OnZonesSidebarSelectionChanged">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock FontSize="11">
+                                        <TextBlock FontSize="13">
                                             <Run Text="{Binding FieldName, Mode=OneWay}" />
                                             <Run Text=" (" /><Run Text="{Binding FieldType, Mode=OneWay}" /><Run Text=")" />
                                         </TextBlock>
@@ -276,7 +309,7 @@
             <!-- ===== Sub-tab 3: Обзор всех зон ===== -->
             <TabItem Header="3. Обзор зон">
                 <DockPanel Margin="12">
-                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.5" FontSize="12" Margin="0,0,0,8"
+                    <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.5" FontSize="14" Margin="0,0,0,8"
                                Text="Все размеченные зоны текущей страницы. Выберите страницу в списке слева." />
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -288,7 +321,7 @@
                             <ListBox ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock FontSize="12">
+                                        <TextBlock FontSize="14">
                                             <Run Text="{Binding BlankType, Mode=OneWay}" />
                                             <Run Text=" (стр. " /><Run Text="{Binding PageNumber, Mode=OneWay}" /><Run Text=")" />
                                         </TextBlock>

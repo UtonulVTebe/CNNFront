@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ExpertAdminTrainerApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+489699efde82e93f8206340c4e1b944455f7c0fb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d82c00fbe75eb89401a78e25a1aec69aa0cd0d39")]
 [assembly: System.Reflection.AssemblyProductAttribute("ExpertAdminTrainerApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ExpertAdminTrainerApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

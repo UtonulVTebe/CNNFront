@@ -75,6 +75,12 @@ public sealed class UserUpdateDto
 {
     public string Name { get; set; } = string.Empty;
     public string? Role { get; set; }
+
+    [global::System.Text.Json.Serialization.JsonIgnore(Condition = global::System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Email { get; set; }
+
+    [global::System.Text.Json.Serialization.JsonIgnore(Condition = global::System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Password { get; set; }
 }
 
 public sealed class PaginatedResponse<T>

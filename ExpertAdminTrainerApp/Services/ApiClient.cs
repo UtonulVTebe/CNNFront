@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ExpertAdminTrainerApp.Domain;
 
 namespace ExpertAdminTrainerApp.Services;
@@ -25,6 +26,18 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
         tokenStore.AccessToken = payload.AccessToken;
         tokenStore.RefreshToken = payload.RefreshToken;
         return payload;
+    }
+
+    public async Task RegisterRequestCodeAsync(RegisterRequestCodeDto dto, CancellationToken ct = default)
+    {
+        var response = await httpClient.PostAsync("api/Auth/register/request", ToJsonContent(dto), ct);
+        await EnsureSuccessOrThrowAsync(response, ct);
+    }
+
+    public async Task<UserReadDto> RegisterConfirmAsync(RegisterConfirmDto dto, CancellationToken ct = default)
+    {
+        var response = await httpClient.PostAsync("api/Auth/register/confirm", ToJsonContent(dto), ct);
+        return await ReadAsAsync<UserReadDto>(response, ct);
     }
 
     // ===== Orders =====
@@ -171,11 +184,7 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
             ApiErrorDto? error = null;
             try { error = JsonSerializer.Deserialize<ApiErrorDto>(text, _jsonOptions); }
             catch { /* ignored */ }
-
-            var message = error?.Message ?? error?.Detail ?? error?.Title
-                ?? $"HTTP {(int)response.StatusCode}";
-            var body = text.Length <= 500 ? text : text[..500] + "…";
-            throw new InvalidOperationException($"{message} | {body}");
+            throw CreateApiException(response, text, error);
         }
 
         return text;
@@ -204,11 +213,7 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
             ApiErrorDto? error = null;
             try { error = JsonSerializer.Deserialize<ApiErrorDto>(text, _jsonOptions); }
             catch { /* ignored */ }
-
-            var message = error?.Message ?? error?.Detail ?? error?.Title
-                ?? $"HTTP {(int)response.StatusCode}";
-            var body = text.Length <= 500 ? text : text[..500] + "…";
-            throw new InvalidOperationException($"{message} | {body}");
+            throw CreateApiException(response, text, error);
         }
 
         return bytes;
@@ -338,13 +343,102 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
         try { error = JsonSerializer.Deserialize<ApiErrorDto>(text, _jsonOptions); }
         catch { /* ignored */ }
 
-        var message = error?.Message ?? error?.Detail ?? error?.Title
-            ?? $"HTTP {(int)response.StatusCode}";
-
-        // Include raw body for easier diagnostics when nothing else is available
-        var body = text.Length <= 500 ? text : text[..500] + "…";
-        throw new InvalidOperationException($"{message} | {body}");
+        throw CreateApiException(response, text, error);
     }
+
+    private async Task EnsureSuccessOrThrowAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        if (response.IsSuccessStatusCode) return;
+        var text = await response.Content.ReadAsStringAsync(ct);
+        ApiErrorDto? error = null;
+        try { error = JsonSerializer.Deserialize<ApiErrorDto>(text, _jsonOptions); }
+        catch { /* ignored */ }
+        throw CreateApiException(response, text, error);
+    }
+
+    private static ApiException CreateApiException(HttpResponseMessage response, string rawBody, ApiErrorDto? error)
+    {
+        var code = (int)response.StatusCode;
+        return new ApiException(code, BuildApiErrorUserMessage(code, error, rawBody));
+    }
+
+    private static string BuildApiErrorUserMessage(int statusCode, ApiErrorDto? error, string rawBody)
+    {
+        var fromValidation = TryFlattenValidationErrors(error);
+        if (!string.IsNullOrWhiteSpace(fromValidation))
+            return SanitizeUserMessage(fromValidation);
+
+        var piece = FirstNonEmptyTrimmed(error?.Message, error?.Detail, error?.Title);
+        if (!string.IsNullOrWhiteSpace(piece))
+            return SanitizeUserMessage(piece);
+
+        var trimmed = rawBody.Trim();
+        if (trimmed.Length > 0
+            && trimmed.Length <= 240
+            && !trimmed.StartsWith('{')
+            && !LooksLikeHtml(trimmed))
+            return SanitizeUserMessage(trimmed);
+
+        return DefaultMessageForStatus(statusCode);
+    }
+
+    private static string? TryFlattenValidationErrors(ApiErrorDto? error)
+    {
+        if (error?.Errors is null || error.Errors.Count == 0) return null;
+        var msgs = new List<string>();
+        foreach (var kv in error.Errors)
+        {
+            foreach (var m in kv.Value)
+            {
+                if (!string.IsNullOrWhiteSpace(m))
+                    msgs.Add(m.Trim());
+            }
+        }
+
+        if (msgs.Count == 0) return null;
+        return string.Join(" ", msgs.Distinct().Take(5));
+    }
+
+    private static string? FirstNonEmptyTrimmed(params string?[] values)
+    {
+        foreach (var v in values)
+        {
+            if (!string.IsNullOrWhiteSpace(v))
+                return v.Trim();
+        }
+
+        return null;
+    }
+
+    private static string SanitizeUserMessage(string s)
+    {
+        s = CollapseWhitespace(s.Trim());
+        if (s.Length > 280)
+            s = s[..280].TrimEnd() + "…";
+        if (LooksLikeHtml(s))
+            return "Сервер прислал неожиданный ответ.";
+        return s;
+    }
+
+    private static string CollapseWhitespace(string s) =>
+        Regex.Replace(s, @"\s+", " ", RegexOptions.None, TimeSpan.FromMilliseconds(200));
+
+    private static bool LooksLikeHtml(string s) =>
+        s.Contains("<html", StringComparison.OrdinalIgnoreCase)
+        || s.Contains("<!DOCTYPE", StringComparison.OrdinalIgnoreCase);
+
+    private static string DefaultMessageForStatus(int statusCode) => statusCode switch
+    {
+        400 => "Сервер не принял данные. Проверьте поля и попробуйте снова.",
+        401 => "Нужно войти заново или проверить логин и пароль.",
+        403 => "У вас нет прав на это действие.",
+        404 => "Запрашиваемый ресурс не найден.",
+        409 => "Такая запись уже существует или произошёл конфликт.",
+        422 => "Данные не прошли проверку. Исправьте поля и повторите попытку.",
+        429 => "Слишком много запросов. Подождите немного.",
+        >= 500 => "На стороне сервера произошла ошибка. Попробуйте позже.",
+        _ => "Сервер вернул ошибку. Попробуйте ещё раз."
+    };
 
     private static string BuildQueryString(params (string Key, string? Value)[] pairs)
     {

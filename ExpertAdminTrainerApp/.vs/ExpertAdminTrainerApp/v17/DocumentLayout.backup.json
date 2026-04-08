@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\ExpertAdminTrainerApp\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{903BEB11-F5CA-428C-97B3-F52F1347CA84}|ExpertAdminTrainerApp.csproj|c:\\users\\kiril_d2gn46f\\onedrive\\desktop\\cnnfront\\expertadmintrainerapp\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{903BEB11-F5CA-428C-97B3-F52F1347CA84}|ExpertAdminTrainerApp.csproj|solutionrelative:appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{903BEB11-F5CA-428C-97B3-F52F1347CA84}|ExpertAdminTrainerApp.csproj|c:\\users\\kiril_d2gn46f\\onedrive\\desktop\\cnnfront\\expertadmintrainerapp\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{903BEB11-F5CA-428C-97B3-F52F1347CA84}|ExpertAdminTrainerApp.csproj|solutionrelative:mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
@@ -23,18 +27,30 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\ExpertAdminTrainerApp\\appsettings.json",
+              "RelativeDocumentMoniker": "appsettings.json",
+              "ToolTip": "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\ExpertAdminTrainerApp\\appsettings.json",
+              "RelativeToolTip": "appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-04-08T20:42:18.724Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "MainWindow.xaml",
               "DocumentMoniker": "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\ExpertAdminTrainerApp\\MainWindow.xaml",
               "RelativeDocumentMoniker": "MainWindow.xaml",
               "ToolTip": "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\ExpertAdminTrainerApp\\MainWindow.xaml",
               "RelativeToolTip": "MainWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2026-04-07T05:45:49.581Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-07T05:45:49.581Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "MainWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\ExpertAdminTrainerApp\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "MainWindow.xaml.cs",

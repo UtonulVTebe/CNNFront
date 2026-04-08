@@ -24,6 +24,19 @@ public sealed class RefreshTokenRequestDto
     public string RefreshToken { get; set; } = string.Empty;
 }
 
+public sealed class RegisterRequestCodeDto
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class RegisterConfirmDto
+{
+    public string Email { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
 // ===== Users =====
 
 public sealed class UserReadDto
@@ -50,6 +63,14 @@ public sealed class UserUpdateDto
 {
     public string Name { get; set; } = string.Empty;
     public string? Role { get; set; }
+
+    /// <summary>Смена email (если API поддерживает поле в PUT /api/Users/{id}).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Email { get; set; }
+
+    /// <summary>Новый пароль; не передаётся в JSON, если null (пароль не меняем).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Password { get; set; }
 }
 
 public sealed class PaginatedResponse<T>
@@ -230,4 +251,8 @@ public sealed class ApiErrorDto
 
     [JsonPropertyName("detail")]
     public string? Detail { get; set; }
+
+    /// <summary>ASP.NET ProblemDetails / validation errors.</summary>
+    [JsonPropertyName("errors")]
+    public Dictionary<string, string[]>? Errors { get; set; }
 }

@@ -4258,6 +4258,17 @@
             "maxLength": 64,
             "type": "string",
             "nullable": true
+          },
+          "email": {
+            "maxLength": 256,
+            "type": "string",
+            "nullable": true
+          },
+          "password": {
+            "maxLength": 256,
+            "minLength": 8,
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

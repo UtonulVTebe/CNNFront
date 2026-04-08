@@ -28,10 +28,10 @@
                     <DataTemplate>
                         <StackPanel Margin="4">
                             <TextBlock FontWeight="SemiBold" Text="{Binding Name, TargetNullValue='(без имени)'}" />
-                            <TextBlock Text="{Binding Email}" Opacity="0.7" FontSize="12" />
+                            <TextBlock Text="{Binding Email}" Opacity="0.7" FontSize="14" />
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Role}" Opacity="0.55" FontSize="11" Margin="0,0,8,0" />
-                                <TextBlock Text="{Binding Balance, StringFormat=Баланс: {0}}" Opacity="0.55" FontSize="11"
+                                <TextBlock Text="{Binding Role}" Opacity="0.55" FontSize="13" Margin="0,0,8,0" />
+                                <TextBlock Text="{Binding Balance, StringFormat=Баланс: {0}}" Opacity="0.55" FontSize="13"
                                            Visibility="{Binding Balance, Converter={StaticResource BoolVis}}" />
                             </StackPanel>
                         </StackPanel>
@@ -40,28 +40,63 @@
             </ListBox>
         </DockPanel>
 
-        <Border Grid.Column="1" Padding="8">
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
             <Grid>
                 <TextBlock Text="Выберите пользователя из списка" VerticalAlignment="Center" HorizontalAlignment="Center"
-                           Opacity="0.4" FontSize="14"
+                           Opacity="0.4" FontSize="16"
                            Visibility="{Binding HasNoSelectedUser, Converter={StaticResource BoolVis}}" />
                 <StackPanel Visibility="{Binding HasSelectedUser, Converter={StaticResource BoolVis}}">
-                    <ui:TextBlock FontTypography="Subtitle" Text="{Binding SelectedUser.Name}" Margin="0,0,0,4" />
-                    <TextBlock Text="{Binding SelectedUser.Email}" Opacity="0.6" Margin="0,0,0,2" />
-                    <TextBlock Text="{Binding SelectedUser.Role, StringFormat=Текущая роль: {0}}" Opacity="0.6" Margin="0,0,0,12" />
+                    <TextBlock Text="{Binding SelectedUser.Role, StringFormat=Текущая роль: {0}}"
+                               Opacity="0.6" Margin="0,0,0,10" />
+
                     <ui:Card Padding="12" Margin="0,0,0,8">
                         <StackPanel>
-                            <TextBlock Text="Назначить роль Expert" FontWeight="SemiBold" Margin="0,0,0,6" />
-                            <TextBlock Text="Назначает роль Expert выбранному пользователю. После этого создайте профиль эксперта ниже."
-                                       Opacity="0.5" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8" />
-                            <ui:Button Appearance="Primary" Content="Назначить Expert" Command="{Binding PromoteToExpertCommand}" />
+                            <TextBlock Text="ФИО, email и пароль" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <TextBlock Text="Сохраняет имя и email; пароль меняется только если поле ниже заполнено (не короче 8 символов)."
+                                       Opacity="0.5" FontSize="14" TextWrapping="Wrap" Margin="0,0,0,10" />
+                            <TextBlock Text="Отображаемое имя (ФИО)" Opacity="0.65" FontSize="13" Margin="0,0,0,4" />
+                            <ui:TextBox Margin="0,0,0,10" Text="{Binding AdminEditUserName, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="Электронная почта" Opacity="0.65" FontSize="13" Margin="0,0,0,4" />
+                            <ui:TextBox Margin="0,0,0,10" Text="{Binding AdminEditUserEmail, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="Новый пароль (необязательно)" Opacity="0.65" FontSize="13" Margin="0,0,0,4" />
+                            <PasswordBox x:Name="AdminPasswordBox"
+                                         Margin="0,0,0,10"
+                                         Padding="8,6"
+                                         FontSize="14"
+                                         PasswordChanged="AdminPassword_OnPasswordChanged" />
+                            <ui:Button Appearance="Primary" Content="Сохранить данные" Command="{Binding SaveAdminUserEditsCommand}" />
                         </StackPanel>
                     </ui:Card>
-                    <ui:Card Padding="12">
+
+                    <ui:Card Padding="12" Margin="0,0,0,8"
+                             Visibility="{Binding ShowAdminPromoteExpert, Converter={StaticResource BoolVis}}">
+                        <StackPanel>
+                            <TextBlock Text="Назначить роль Expert" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <TextBlock Text="Доступно только для пользователей, которые ещё не Expert и не Admin. Сначала проверьте ФИО и email выше."
+                                       Opacity="0.5" FontSize="14" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <ui:Button Appearance="Secondary"
+                                       Content="Назначить Expert"
+                                       Command="{Binding PromoteToExpertCommand}" />
+                        </StackPanel>
+                    </ui:Card>
+
+                    <ui:Card Padding="12" Margin="0,0,0,8"
+                             Visibility="{Binding ShowAdminDemoteExpert, Converter={StaticResource BoolVis}}">
+                        <StackPanel>
+                            <TextBlock Text="Понизить до Student" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <TextBlock Text="Только для роли Expert. Собственную учётную запись понизить нельзя."
+                                       Opacity="0.5" FontSize="14" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <ui:Button Appearance="Danger"
+                                       Content="Понизить Expert → Student"
+                                       Command="{Binding DemoteExpertToStudentCommand}" />
+                        </StackPanel>
+                    </ui:Card>
+
+                    <ui:Card Padding="12" Visibility="{Binding ShowAdminExpertProfile, Converter={StaticResource BoolVis}}">
                         <StackPanel>
                             <TextBlock Text="Профиль эксперта (баланс)" FontWeight="SemiBold" Margin="0,0,0,6" />
                             <TextBlock Text="Создаёт запись ExpertInfo со стартовым балансом. Пользователь уже должен иметь роль Expert."
-                                       Opacity="0.5" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                       Opacity="0.5" FontSize="14" TextWrapping="Wrap" Margin="0,0,0,8" />
                             <DockPanel Margin="0,0,0,8">
                                 <TextBlock DockPanel.Dock="Left" Text="Стартовый баланс:" VerticalAlignment="Center" Margin="0,0,8,0" />
                                 <ui:TextBox Width="100" Text="{Binding ExpertInfoBalance}" />
@@ -71,6 +106,6 @@
                     </ui:Card>
                 </StackPanel>
             </Grid>
-        </Border>
+        </ScrollViewer>
     </Grid>
 </UserControl>

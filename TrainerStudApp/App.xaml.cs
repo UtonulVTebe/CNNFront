@@ -1,5 +1,7 @@
 ﻿using System.IO;
+using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Security;
 using System.Windows;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,13 +44,15 @@ public partial class App : Application
     {
         services.AddSingleton<IConfiguration>(Configuration);
         services.AddSingleton<ITokenStore, FileTokenStore>();
-        services.AddHttpClient<IApiClient, ApiClient>((provider, client) =>
-        {
-            var configuration = provider.GetRequiredService<IConfiguration>();
-            var baseUrl = configuration["Api:BaseUrl"] ?? "https://localhost:7128";
-            client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        });
+        services.AddHttpClient<IApiClient, ApiClient>()
+            .ConfigurePrimaryHttpMessageHandler(CreateApiHttpMessageHandler)
+            .ConfigureHttpClient((provider, client) =>
+            {
+                var configuration = provider.GetRequiredService<IConfiguration>();
+                var baseUrl = configuration["Api:BaseUrl"] ?? "https://localhost:7128";
+                client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            });
 
         services.AddSingleton<BlankTemplateService>();
         services.AddSingleton<BlankTemplateSyncService>();
@@ -57,4 +61,34 @@ public partial class App : Application
         services.AddSingleton<StudentMainViewModel>();
         services.AddSingleton<MainWindow>();
     }
+
+    private static HttpMessageHandler CreateApiHttpMessageHandler(IServiceProvider services)
+    {
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var handler = new HttpClientHandler();
+
+        if (configuration.GetValue("Api:SkipCertificateValidation", false))
+        {
+            handler.ServerCertificateCustomValidationCallback =
+                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+        }
+        else
+        {
+            handler.ServerCertificateCustomValidationCallback = static (request, _, _, errors) =>
+            {
+                var host = request.RequestUri?.Host;
+                if (host is not null && IsLocalDevHost(host))
+                    return true;
+                return errors == SslPolicyErrors.None;
+            };
+        }
+
+        return handler;
+    }
+
+    private static bool IsLocalDevHost(string host) =>
+        host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+        || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+        || host.Equals("[::1]", StringComparison.OrdinalIgnoreCase)
+        || host.Equals("::1", StringComparison.OrdinalIgnoreCase);
 }

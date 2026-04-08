@@ -280,3 +280,15 @@ c:\Users\Maksim\Documents\GitHub\CNNFront\TrainerStudApp\_vb6\Microsoft.Extensio
 c:\Users\Maksim\Documents\GitHub\CNNFront\TrainerStudApp\_vb6\Microsoft.Extensions.Primitives.dll
 c:\Users\Maksim\Documents\GitHub\CNNFront\TrainerStudApp\_vb6\Wpf.Ui.dll
 c:\Users\Maksim\Documents\GitHub\CNNFront\TrainerStudApp\_vb6\Wpf.Ui.Abstractions.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\bin\Debug\net8.0-windows\CommunityToolkit.Mvvm.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\bin\Debug\net8.0-windows\Microsoft.Extensions.Configuration.Binder.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\bin\Debug\net8.0-windows\Microsoft.Extensions.DependencyInjection.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\bin\Debug\net8.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\bin\Debug\net8.0-windows\Microsoft.Extensions.Diagnostics.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\bin\Debug\net8.0-windows\Microsoft.Extensions.Diagnostics.Abstractions.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\bin\Debug\net8.0-windows\Microsoft.Extensions.Http.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\bin\Debug\net8.0-windows\Microsoft.Extensions.Logging.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\bin\Debug\net8.0-windows\Microsoft.Extensions.Logging.Abstractions.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\bin\Debug\net8.0-windows\Microsoft.Extensions.Options.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\bin\Debug\net8.0-windows\Microsoft.Extensions.Options.ConfigurationExtensions.dll
+c:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\obj\Debug\net8.0-windows\GeneratedInternalTypeHelper.g.cs

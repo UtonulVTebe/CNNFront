@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -15,18 +16,45 @@ using Microsoft.Win32;
 
 namespace ExpertAdminTrainerApp.Presentation.ViewModels;
 
-public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore) : ObservableObject
+public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore, IAppNavigator appNavigator) : ObservableObject
 {
     private bool _suppressSelectedOrderChanged;
+
+    /// <summary>Сообщение для экрана входа, если восстановление сессии не удалось (однократно через <see cref="ConsumeLoginScreenHint"/>).</summary>
+    private string? _loginScreenHint;
     // ===== Auth =====
-    [ObservableProperty] private string email = string.Empty;
-    [ObservableProperty] private string password = string.Empty;
     [ObservableProperty] private string userName = string.Empty;
     [ObservableProperty] private string role = string.Empty;
     [ObservableProperty] private int? currentUserId;
-    [ObservableProperty] private string statusText = "Введите логин и пароль.";
+    [ObservableProperty] private string statusText = "Готово.";
     [ObservableProperty] private bool isBusy;
     [ObservableProperty] private bool isAuthenticated;
+
+    /// <summary>Email из JWT (логин).</summary>
+    [ObservableProperty] private string currentUserEmail = string.Empty;
+
+    /// <summary>Выпадающее меню учётной записи в шапке главного окна.</summary>
+    [ObservableProperty] private bool isAccountMenuOpen;
+
+    [ObservableProperty] private bool isProfileEditorVisible;
+
+    [ObservableProperty] private string editableProfileName = string.Empty;
+
+    /// <summary>Баланс из GET api/ExpertInfos/{userId}; null — не загружен или профиль недоступен.</summary>
+    [ObservableProperty] private int? expertAccountBalance;
+
+    /// <summary>Строка состояния: выделить как ошибку (контрастнее цвет в MainWindow).</summary>
+    public bool StatusBarIsError => StatusTextIndicatesError(StatusText);
+
+    /// <summary>Сводка в меню (скрыта в режиме редактирования имени).</summary>
+    public bool ShowAccountSummary => !IsProfileEditorVisible;
+
+    public bool HasUserEmail => !string.IsNullOrWhiteSpace(CurrentUserEmail);
+
+    /// <summary>Текст строки баланса в меню профиля (видна только у Expert).</summary>
+    public string ExpertBalanceSubtitle =>
+        !IsExpert ? string.Empty
+        : ExpertAccountBalance.HasValue ? $"Баланс: {ExpertAccountBalance.Value}" : "Баланс: нет данных";
 
     // ===== CNN Catalog =====
     [ObservableProperty] private CnnListItemDto? selectedCnn;
@@ -76,6 +104,14 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
     [ObservableProperty] private UserListItemDto? selectedUser;
     [ObservableProperty] private int expertInfoBalance;
 
+    /// <summary>Редактирование выбранного пользователя (админ): ФИО, email, пароль.</summary>
+    [ObservableProperty] private string adminEditUserName = string.Empty;
+
+    [ObservableProperty] private string adminEditUserEmail = string.Empty;
+
+    /// <summary>Только ввод; не хранится после сохранения. Синхронизируется с PasswordBox в UsersView.</summary>
+    [ObservableProperty] private string adminEditUserPassword = string.Empty;
+
     // ===== Collections =====
     public ObservableCollection<OrderAnswerReadDto> QueueOrders { get; } = [];
     public ObservableCollection<OrderAnswerReadDto> MyCheckingOrders { get; } = [];
@@ -106,6 +142,20 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
     public bool HasNoSelectedOrder => SelectedQueueOrder is null;
     public bool HasSelectedUser => SelectedUser is not null;
     public bool HasNoSelectedUser => SelectedUser is null;
+
+    /// <summary>Карточка «Назначить Expert»: только если выбранный пользователь ещё не Expert и не Admin.</summary>
+    public bool ShowAdminPromoteExpert =>
+        SelectedUser is not null && !IsUserRoleExpertOrAdmin(SelectedUser.Role);
+
+    /// <summary>Карточка «Понизить до Student»: только Expert, не своя учётная запись.</summary>
+    public bool ShowAdminDemoteExpert =>
+        SelectedUser is not null
+        && IsUserRoleExpert(SelectedUser.Role)
+        && SelectedUser.Id != CurrentUserId;
+
+    /// <summary>Блок профиля эксперта (баланс): только для роли Expert.</summary>
+    public bool ShowAdminExpertProfile =>
+        SelectedUser is not null && IsUserRoleExpert(SelectedUser.Role);
     public bool HasReview => CurrentReview is not null;
     public bool HasNoReview => CurrentReview is null;
     public bool HasOrderSubmissionPreview => OrderSubmissionDocument is { Template.Pages.Count: > 0 };
@@ -117,18 +167,18 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
         SelectedQueueOrder is not null && ExplainWhyCannotClaimOrder() is null;
 
     public bool CanRejectSelectedOrder =>
-        IsExpert && SelectedQueueOrder is { } o &&
+        IsAdminOrExpert && SelectedQueueOrder is { } o &&
         o.Status == OrderAnswerStatus.Checking &&
-        CurrentUserId.HasValue &&
-        o.ExpertId == CurrentUserId.Value;
+        (IsAdmin || (CurrentUserId.HasValue && o.ExpertId == CurrentUserId.Value));
 
     /// <summary>Новая проверка (POST) в статусе Checking.</summary>
     public bool CanSubmitNewReview =>
-        IsExpert && SelectedQueueOrder is { Status: OrderAnswerStatus.Checking } &&
-        CurrentUserId.HasValue && SelectedQueueOrder!.ExpertId == CurrentUserId.Value;
+        IsAdminOrExpert && SelectedQueueOrder is { } o &&
+        o.Status == OrderAnswerStatus.Checking &&
+        (IsAdmin || (CurrentUserId.HasValue && o.ExpertId == CurrentUserId.Value));
 
     public bool CanEditExistingReview =>
-        IsExpert && SelectedQueueOrder is { Status: OrderAnswerStatus.Checked } && HasReview;
+        IsAdminOrExpert && SelectedQueueOrder is { Status: OrderAnswerStatus.Checked } && HasReview;
 
     public bool CanOpenReviewEditor => CanSubmitNewReview || CanEditExistingReview;
 
@@ -146,6 +196,12 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
 
     // ===== Change Handlers =====
     partial void OnIsAuthenticatedChanged(bool value) => RaiseAll();
+
+    partial void OnStatusTextChanged(string value) => OnPropertyChanged(nameof(StatusBarIsError));
+
+    partial void OnExpertAccountBalanceChanged(int? value) => OnPropertyChanged(nameof(ExpertBalanceSubtitle));
+    partial void OnIsProfileEditorVisibleChanged(bool value) => OnPropertyChanged(nameof(ShowAccountSummary));
+    partial void OnCurrentUserEmailChanged(string value) => OnPropertyChanged(nameof(HasUserEmail));
     partial void OnRoleChanged(string value) => RaiseAll();
     partial void OnEditingMaterialKindChanged(MaterialKind value) => OnPropertyChanged(nameof(EditingMaterialKindLabel));
 
@@ -156,7 +212,12 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
         RaiseExpertOrderFlags();
     }
 
-    partial void OnCurrentUserIdChanged(int? value) => RaiseExpertOrderFlags();
+    partial void OnCurrentUserIdChanged(int? value)
+    {
+        RaiseExpertOrderFlags();
+        OnPropertyChanged(nameof(ShowAdminDemoteExpert));
+        DemoteExpertToStudentCommand.NotifyCanExecuteChanged();
+    }
 
     partial void OnSelectedCnnChanged(CnnListItemDto? value)
     {
@@ -199,7 +260,7 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
             RejectionReason = string.Empty;
             IsRejectingOrder = false;
             _ = LoadOrderCnnDetails(value.CnnId);
-            if (IsExpert) _ = LoadReview(value.Id);
+            if (IsAdminOrExpert) _ = LoadReview(value.Id);
             OnPropertyChanged(nameof(SelectedOrderStatusText));
             RaiseExpertOrderFlags();
             _ = TryLoadOrderSubmissionPreviewAsync(value);
@@ -215,7 +276,7 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
         ReviewCriteria.Clear();
         IsEditingReview = false;
         _ = LoadOrderCnnDetails(value.CnnId);
-        if (IsExpert) _ = LoadReview(value.Id);
+        if (IsAdminOrExpert) _ = LoadReview(value.Id);
         _ = HydrateSelectedOrderFromServerAsync(value.Id);
     }
 
@@ -228,7 +289,27 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
     {
         OnPropertyChanged(nameof(HasSelectedUser));
         OnPropertyChanged(nameof(HasNoSelectedUser));
-        if (value is not null) ExpertInfoBalance = value.Balance ?? 0;
+        if (value is not null)
+        {
+            ExpertInfoBalance = value.Balance ?? 0;
+            AdminEditUserName = value.Name ?? string.Empty;
+            AdminEditUserEmail = value.Email ?? string.Empty;
+            AdminEditUserPassword = string.Empty;
+        }
+        else
+        {
+            AdminEditUserName = string.Empty;
+            AdminEditUserEmail = string.Empty;
+            AdminEditUserPassword = string.Empty;
+        }
+
+        OnPropertyChanged(nameof(ShowAdminPromoteExpert));
+        OnPropertyChanged(nameof(ShowAdminDemoteExpert));
+        OnPropertyChanged(nameof(ShowAdminExpertProfile));
+        PromoteToExpertCommand.NotifyCanExecuteChanged();
+        DemoteExpertToStudentCommand.NotifyCanExecuteChanged();
+        CreateExpertInfoCommand.NotifyCanExecuteChanged();
+        SaveAdminUserEditsCommand.NotifyCanExecuteChanged();
     }
 
     private void RaiseAll()
@@ -236,6 +317,7 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
         OnPropertyChanged(nameof(IsExpert));
         OnPropertyChanged(nameof(IsAdmin));
         OnPropertyChanged(nameof(IsAdminOrExpert));
+        OnPropertyChanged(nameof(ExpertBalanceSubtitle));
         RaiseExpertOrderFlags();
     }
 
@@ -251,19 +333,53 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
 
     // ========== AUTH ==========
 
-    [RelayCommand]
-    private async Task Login()
+    /// <summary>Восстановление сессии при старте приложения или перед показом главного окна.</summary>
+    public async Task<bool> TryRestoreSessionAsync()
     {
+        if (string.IsNullOrWhiteSpace(tokenStore.AccessToken)) return false;
         try
         {
-            IsBusy = true;
-            var auth = await apiClient.LoginAsync(new LoginDto { Email = Email.Trim(), Password = Password });
-            ApplyTokenContext(auth.AccessToken);
-            StatusText = $"Вход выполнен: {UserName} ({Role})";
+            ApplyTokenContext(tokenStore.AccessToken);
+            if (!IsAuthenticated) return false;
+            await apiClient.GetMineAsync();
+            await TryHydrateProfileFromUsersApiAsync();
+            StatusText = $"Сессия восстановлена: {UserName} ({Role})";
             await PostLoginLoad();
+            return true;
         }
-        catch (Exception ex) { StatusText = $"Ошибка входа: {ex.Message}"; }
-        finally { IsBusy = false; }
+        catch (Exception ex)
+        {
+            _loginScreenHint =
+                "Не удалось восстановить сессию (токен устарел или сервер недоступен). Войдите снова. Подробности: "
+                + ex.Message;
+            tokenStore.Clear();
+            IsAuthenticated = false;
+            CurrentUserEmail = string.Empty;
+            ExpertAccountBalance = null;
+            IsAccountMenuOpen = false;
+            IsProfileEditorVisible = false;
+            StatusText = _loginScreenHint;
+            return false;
+        }
+    }
+
+    /// <summary>Текст для показа на LoginWindow после неудачного <see cref="TryRestoreSessionAsync"/>.</summary>
+    public string? ConsumeLoginScreenHint()
+    {
+        var t = _loginScreenHint;
+        _loginScreenHint = null;
+        return t;
+    }
+
+    /// <summary>После успешного API-логина: разбор JWT, загрузка данных роли.</summary>
+    public async Task<bool> ApplyLoginResponseAsync(string accessToken)
+    {
+        ApplyTokenContext(accessToken);
+        if (!IsAuthenticated) return false;
+        await TryHydrateProfileFromUsersApiAsync();
+        StatusText = $"Вход выполнен: {UserName} ({Role})";
+        await PostLoginLoad();
+        return true;
     }
 
     [RelayCommand]
@@ -272,6 +388,11 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
         tokenStore.Clear();
         IsAuthenticated = false;
         UserName = Role = string.Empty;
+        CurrentUserEmail = string.Empty;
+        ExpertAccountBalance = null;
+        IsAccountMenuOpen = false;
+        IsProfileEditorVisible = false;
+        EditableProfileName = string.Empty;
         CurrentUserId = null;
         QueueOrders.Clear();
         MyCheckingOrders.Clear();
@@ -279,23 +400,69 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
         Users.Clear();
         ClearMaterialCollections();
         StatusText = "Вы вышли из системы.";
+        appNavigator.ReturnToLoginAfterLogout();
     }
 
     [RelayCommand]
-    private async Task RestoreSession()
+    private void ToggleAccountMenu()
     {
-        if (string.IsNullOrWhiteSpace(tokenStore.AccessToken)) return;
+        var opening = !IsAccountMenuOpen;
+        IsAccountMenuOpen = opening;
+        if (opening)
+        {
+            IsProfileEditorVisible = false;
+            if (IsExpert && CurrentUserId.HasValue)
+                _ = TryHydrateExpertBalanceAsync(clearFirst: false);
+        }
+    }
+
+    [RelayCommand]
+    private void BeginEditProfile()
+    {
+        EditableProfileName = (UserName ?? string.Empty).Trim();
+        IsProfileEditorVisible = true;
+    }
+
+    [RelayCommand]
+    private void CancelEditProfile()
+    {
+        IsProfileEditorVisible = false;
+        EditableProfileName = string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task SaveProfileAsync()
+    {
+        var name = (EditableProfileName ?? string.Empty).Trim();
+        if (name.Length < 2)
+        {
+            StatusText = "Имя должно содержать не менее 2 символов.";
+            return;
+        }
+
+        if (!CurrentUserId.HasValue)
+        {
+            StatusText = "Не удалось определить учётную запись (id).";
+            return;
+        }
+
+        IsBusy = true;
         try
         {
-            ApplyTokenContext(tokenStore.AccessToken);
-            await apiClient.GetMineAsync();
-            StatusText = $"Сессия восстановлена: {UserName} ({Role})";
-            await PostLoginLoad();
+            var updated = await apiClient.UpdateUserAsync(CurrentUserId.Value, new UserUpdateDto { Name = name, Role = null });
+            UserName = string.IsNullOrWhiteSpace(updated.Name) ? name : updated.Name.Trim();
+            IsProfileEditorVisible = false;
+            IsAccountMenuOpen = false;
+            EditableProfileName = string.Empty;
+            StatusText = "Профиль сохранён.";
         }
-        catch
+        catch (Exception ex)
         {
-            tokenStore.Clear();
-            IsAuthenticated = false;
+            StatusText = $"Не удалось сохранить профиль: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 
@@ -306,7 +473,7 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
             await LoadCnns();
             await LoadUsers();
         }
-        if (IsExpert)
+        if (IsAdminOrExpert)
         {
             await LoadQueue();
             await LoadMyChecking();
@@ -547,9 +714,11 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
                 from: ExpertMyOrdersFrom, to: ExpertMyOrdersTo,
                 page: 1, pageSize: 50);
             foreach (var item in page.Items) MyCheckingOrders.Add(item);
-            StatusText = $"Мои проверки (Checking): {MyCheckingOrders.Count} из {page.TotalCount}.";
+            StatusText = IsAdmin
+                ? $"Заказы «На проверке»: {MyCheckingOrders.Count} из {page.TotalCount}."
+                : $"Мои заказы в работе: {MyCheckingOrders.Count} из {page.TotalCount}.";
         }
-        catch (Exception ex) { StatusText = $"Ошибка загрузки «моих проверок»: {ex.Message}"; }
+        catch (Exception ex) { StatusText = $"Ошибка загрузки «Мои в работе»: {ex.Message}"; }
         finally { IsBusy = false; }
     }
 
@@ -638,7 +807,7 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
 
         if (!CanRejectSelectedOrder)
         {
-            StatusText = "Отклонение доступно только назначенному эксперту в статусе «На проверке».";
+            StatusText = "Отклонение доступно администратору или назначенному эксперту в статусе «На проверке».";
             return;
         }
 
@@ -818,6 +987,7 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
     [RelayCommand]
     private async Task LoadUsers()
     {
+        var keepId = SelectedUser?.Id;
         try
         {
             IsBusy = true;
@@ -827,32 +997,132 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
                 search: string.IsNullOrWhiteSpace(UserSearch) ? null : UserSearch.Trim(),
                 pageSize: 50);
             foreach (var u in result.Items) Users.Add(u);
-            StatusText = $"Пользователей: {result.TotalCount} (показано {result.Items.Count})";
+            if (keepId.HasValue)
+                SelectedUser = Users.FirstOrDefault(u => u.Id == keepId.Value);
+            StatusText = "Готово.";
         }
         catch (Exception ex) { StatusText = $"Ошибка загрузки пользователей: {ex.Message}"; }
         finally { IsBusy = false; }
     }
 
-    [RelayCommand]
+    private bool CanPromoteToExpert() =>
+        SelectedUser is not null && !IsUserRoleExpertOrAdmin(SelectedUser.Role);
+
+    [RelayCommand(CanExecute = nameof(CanPromoteToExpert))]
     private async Task PromoteToExpert()
     {
-        if (SelectedUser is null) return;
+        if (SelectedUser is null || !CanPromoteToExpert()) return;
+        var name = AdminEditUserName.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            StatusText = "Укажите отображаемое имя (ФИО) перед назначением роли Expert.";
+            return;
+        }
+
         try
         {
             IsBusy = true;
             await apiClient.UpdateUserAsync(SelectedUser.Id, new UserUpdateDto
             {
-                Name = SelectedUser.Name ?? string.Empty,
-                Role = "Expert"
+                Name = name,
+                Role = "Expert",
+                Email = string.IsNullOrWhiteSpace(AdminEditUserEmail) ? null : AdminEditUserEmail.Trim()
             });
-            StatusText = $"Роль «Expert» назначена пользователю {SelectedUser.Name}.";
+            StatusText = $"Роль «Expert» назначена пользователю {name}.";
             await LoadUsers();
         }
         catch (Exception ex) { StatusText = $"Ошибка: {ex.Message}"; }
         finally { IsBusy = false; }
     }
 
-    [RelayCommand]
+    private bool CanDemoteExpertToStudent() =>
+        SelectedUser is not null
+        && IsUserRoleExpert(SelectedUser.Role)
+        && SelectedUser.Id != CurrentUserId;
+
+    [RelayCommand(CanExecute = nameof(CanDemoteExpertToStudent))]
+    private async Task DemoteExpertToStudent()
+    {
+        if (SelectedUser is null || !CanDemoteExpertToStudent()) return;
+        var name = AdminEditUserName.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            StatusText = "Укажите отображаемое имя (ФИО) перед сменой роли.";
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            $"Понизить пользователя «{name}» с роли Expert до Student?\n\nПрофиль ExpertInfo на сервере может остаться — при необходимости обработайте это отдельно.",
+            "Подтверждение",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        try
+        {
+            IsBusy = true;
+            await apiClient.UpdateUserAsync(SelectedUser.Id, new UserUpdateDto
+            {
+                Name = name,
+                Role = "Student",
+                Email = string.IsNullOrWhiteSpace(AdminEditUserEmail) ? null : AdminEditUserEmail.Trim()
+            });
+            StatusText = $"Пользователь «{name}» переведён в роль Student.";
+            await LoadUsers();
+        }
+        catch (Exception ex) { StatusText = $"Ошибка: {ex.Message}"; }
+        finally { IsBusy = false; }
+    }
+
+    private bool CanSaveAdminUserEdits() => SelectedUser is not null;
+
+    [RelayCommand(CanExecute = nameof(CanSaveAdminUserEdits))]
+    private async Task SaveAdminUserEdits()
+    {
+        if (SelectedUser is null) return;
+        var name = AdminEditUserName.Trim();
+        if (string.IsNullOrEmpty(name))
+        {
+            StatusText = "Имя (ФИО) не может быть пустым.";
+            return;
+        }
+
+        var email = AdminEditUserEmail.Trim();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            StatusText = "Укажите email пользователя.";
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(AdminEditUserPassword) && AdminEditUserPassword.Length < AdminUserPasswordMinLength)
+        {
+            StatusText = $"Новый пароль не короче {AdminUserPasswordMinLength} символов или оставьте поле пустым.";
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            var dto = new UserUpdateDto
+            {
+                Name = name,
+                Role = null,
+                Email = email,
+                Password = string.IsNullOrWhiteSpace(AdminEditUserPassword) ? null : AdminEditUserPassword
+            };
+            await apiClient.UpdateUserAsync(SelectedUser.Id, dto);
+            AdminEditUserPassword = string.Empty;
+            StatusText = "Данные пользователя сохранены.";
+            await LoadUsers();
+        }
+        catch (Exception ex) { StatusText = $"Ошибка: {ex.Message}"; }
+        finally { IsBusy = false; }
+    }
+
+    private bool CanCreateExpertInfo() =>
+        SelectedUser is not null && IsUserRoleExpert(SelectedUser.Role);
+
+    [RelayCommand(CanExecute = nameof(CanCreateExpertInfo))]
     private async Task CreateExpertInfo()
     {
         if (SelectedUser is null) return;
@@ -869,6 +1139,18 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
         }
         catch (Exception ex) { StatusText = $"Ошибка: {ex.Message}"; }
         finally { IsBusy = false; }
+    }
+
+    private const int AdminUserPasswordMinLength = 8;
+
+    private static bool IsUserRoleExpert(string? role) =>
+        string.Equals(role?.Trim(), "Expert", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsUserRoleExpertOrAdmin(string? role)
+    {
+        var r = role?.Trim();
+        return string.Equals(r, "Expert", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(r, "Admin", StringComparison.OrdinalIgnoreCase);
     }
 
     // ========== TOOLS ==========
@@ -978,7 +1260,7 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
 
             UpdateAnswerUrl = fresh.AnswerUrl ?? string.Empty;
             await LoadOrderCnnDetails(fresh.CnnId);
-            if (IsExpert)
+            if (IsAdminOrExpert)
                 await LoadReview(fresh.Id);
             OnPropertyChanged(nameof(SelectedOrderStatusText));
             RaiseExpertOrderFlags();
@@ -1102,13 +1384,59 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
         return bmp;
     }
 
+    /// <summary>Имя в JWT часто устаревает или отсутствует — подтягиваем актуальное с API.</summary>
+    private async Task TryHydrateProfileFromUsersApiAsync()
+    {
+        if (!CurrentUserId.HasValue || !IsAuthenticated) return;
+        try
+        {
+            var user = await apiClient.GetUserAsync(CurrentUserId.Value);
+            if (!string.IsNullOrWhiteSpace(user.Name))
+                UserName = user.Name.Trim();
+            if (string.IsNullOrWhiteSpace(CurrentUserEmail) && !string.IsNullOrWhiteSpace(user.Email))
+                CurrentUserEmail = user.Email.Trim();
+        }
+        catch (Exception ex)
+        {
+            if (string.Equals(UserName.Trim(), "Unknown", StringComparison.OrdinalIgnoreCase))
+                StatusText = "Имя не загружено с сервера (GET профиля). " + ex.Message;
+        }
+
+        await TryHydrateExpertBalanceAsync(clearFirst: true);
+    }
+
+    /// <summary>GET api/ExpertInfos/{userId} — только для роли Expert, свой id.</summary>
+    /// <param name="clearFirst">После входа — сбросить баланс до загрузки; при обновлении из меню — оставить старое значение на время запроса.</param>
+    private async Task TryHydrateExpertBalanceAsync(bool clearFirst = true)
+    {
+        if (clearFirst)
+        {
+            ExpertAccountBalance = null;
+            OnPropertyChanged(nameof(ExpertBalanceSubtitle));
+        }
+
+        if (!CurrentUserId.HasValue || !IsExpert) return;
+        try
+        {
+            var info = await apiClient.GetExpertInfoAsync(CurrentUserId.Value);
+            ExpertAccountBalance = info.Balance;
+        }
+        catch
+        {
+            if (clearFirst)
+                ExpertAccountBalance = null;
+        }
+
+        OnPropertyChanged(nameof(ExpertBalanceSubtitle));
+    }
+
     private void ApplyTokenContext(string accessToken)
     {
         var payload = ReadJwtPayload(accessToken);
         UserName = GetClaimValue(payload,
-            "name", "unique_name",
+            "name", "unique_name", "given_name",
             "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress") ?? "Unknown";
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname") ?? "Unknown";
         Role = GetClaimValue(payload,
             "role", "roles",
             "http://schemas.microsoft.com/ws/2008/06/identity/claims/role") ?? string.Empty;
@@ -1118,6 +1446,7 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
             tokenStore.Clear();
             IsAuthenticated = false;
             CurrentUserId = null;
+            CurrentUserEmail = string.Empty;
             StatusText = "Вход под ролью Student не поддерживается. Свяжитесь с поддержкой.";
             return;
         }
@@ -1127,9 +1456,15 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
             tokenStore.Clear();
             IsAuthenticated = false;
             CurrentUserId = null;
+            CurrentUserEmail = string.Empty;
             StatusText = $"Роль «{Role}» не поддерживается.";
             return;
         }
+
+        CurrentUserEmail = GetClaimValue(payload,
+            "email",
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+            "preferred_username") ?? string.Empty;
 
         CurrentUserId = TryParseUserIdClaim(payload);
         IsAuthenticated = true;
@@ -1181,16 +1516,7 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
         return null;
     }
 
-    private static string FormatOrderStatus(OrderAnswerStatus s) => s switch
-    {
-        OrderAnswerStatus.NoCheck => "Без проверки",
-        OrderAnswerStatus.PaymentInProgress => "Оплата",
-        OrderAnswerStatus.QueueForCheck => "В очереди на проверку",
-        OrderAnswerStatus.Checking => "На проверке",
-        OrderAnswerStatus.Checked => "Проверено",
-        OrderAnswerStatus.RejectedByExpert => "Отклонено экспертом",
-        _ => s.ToString()
-    };
+    private static string FormatOrderStatus(OrderAnswerStatus s) => OrderAnswerStatusLabels.Russian(s);
 
     private OrderAnswerStatus? ParseQueueFilter(string raw) =>
         string.Equals(raw, QueueFilterServerDefault, StringComparison.Ordinal)
@@ -1199,4 +1525,14 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore)
 
     private static OrderAnswerStatus? ParseStatus(string raw) =>
         Enum.TryParse<OrderAnswerStatus>(raw, true, out var p) ? p : null;
+
+    private static bool StatusTextIndicatesError(string? t)
+    {
+        if (string.IsNullOrWhiteSpace(t)) return false;
+        return t.Contains("Ошибка", StringComparison.OrdinalIgnoreCase)
+               || t.Contains("Не удалось", StringComparison.OrdinalIgnoreCase)
+               || t.Contains("не восстановлена", StringComparison.OrdinalIgnoreCase)
+               || t.Contains("не загружено", StringComparison.OrdinalIgnoreCase)
+               || t.Contains("недоступен", StringComparison.OrdinalIgnoreCase);
+    }
 }

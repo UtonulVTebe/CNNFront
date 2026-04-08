@@ -6,6 +6,8 @@ public interface IApiClient
 {
     // Auth
     Task<LoginResponseDto> LoginAsync(LoginDto dto, CancellationToken ct = default);
+    Task RegisterRequestCodeAsync(RegisterRequestCodeDto dto, CancellationToken ct = default);
+    Task<UserReadDto> RegisterConfirmAsync(RegisterConfirmDto dto, CancellationToken ct = default);
 
     // Orders (Expert/Admin)
     Task<IReadOnlyList<OrderAnswerReadDto>> GetQueueAsync(OrderAnswerStatus? status, CancellationToken ct = default);
