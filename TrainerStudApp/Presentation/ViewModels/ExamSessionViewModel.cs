@@ -321,7 +321,7 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
         var template = CurrentTemplate;
         if (template is null || template.AutoAnswers.Count == 0)
         {
-            ViewerStatus = "Нет эталонных ответов (autoAnswers) в шаблоне.";
+            ViewerStatus = "В шаблоне нет правильных заданий для автопроверки (autoAnswers).";
             ResultSummaryText = ViewerStatus;
             HasGraded = true;
             GradingCompleted?.Invoke(this, EventArgs.Empty);
@@ -334,8 +334,8 @@ public partial class ExamSessionViewModel(BlankTemplateService templateService, 
             GradingResults.Add(r);
 
         var ok = GradingResults.Count(x => x.IsCorrect);
-        ViewerStatus = $"Автопроверка: {ok} из {GradingResults.Count} заданий с эталоном.";
-        ResultSummaryText = $"{ViewerStatus} Верно: {ok}, всего с эталоном: {GradingResults.Count}.";
+        ViewerStatus = $"Автопроверка: {ok} из {GradingResults.Count} заданий с правильным ответом в шаблоне.";
+        ResultSummaryText = $"{ViewerStatus} Верно: {ok}, всего с ответом в шаблоне: {GradingResults.Count}.";
         HasGraded = true;
         GradingCompleted?.Invoke(this, EventArgs.Empty);
     }

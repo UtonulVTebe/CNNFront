@@ -360,9 +360,11 @@ public partial class StudentMainViewModel(
             }
 
             orders.NewOrderAnswerUrl = url;
+            var cnnId = examSession.CurrentTemplate!.CnnId;
+            await orders.PrepareAfterSubmissionUploadAsync(cnnId);
             SelectedNavIndex = 3;
             StatusText =
-                "Ответ загружен на сервер. Открыта вкладка «Проверки» — выберите вариант и создайте заказ (или обновите существующий).";
+                "1) Пакет загружен на сервер. 2) Открыта вкладка «Проверки», форма «Новый заказ» — вариант подставлен. 3) Нажмите «Создать» (галочка «Сразу в очередь» — по желанию).";
         }
         catch (Exception ex)
         {

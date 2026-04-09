@@ -45,11 +45,11 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
     public Task<IReadOnlyList<OrderAnswerReadDto>> GetQueueAsync(OrderAnswerStatus? status, CancellationToken ct = default)
     {
         var suffix = status is null ? string.Empty : $"?status={(int)status.Value}";
-        return SendWithAuthAsync<IReadOnlyList<OrderAnswerReadDto>>(HttpMethod.Get, $"api/orderanswers/queue{suffix}", null, ct);
+        return SendWithAuthAsync<IReadOnlyList<OrderAnswerReadDto>>(HttpMethod.Get, $"api/OrderAnswers/queue{suffix}", null, ct);
     }
 
     public Task<IReadOnlyList<OrderAnswerReadDto>> GetMineAsync(CancellationToken ct = default) =>
-        SendWithAuthAsync<IReadOnlyList<OrderAnswerReadDto>>(HttpMethod.Get, "api/orderanswers/mine", null, ct);
+        SendWithAuthAsync<IReadOnlyList<OrderAnswerReadDto>>(HttpMethod.Get, "api/OrderAnswers/mine", null, ct);
 
     public Task<PaginatedResponse<OrderAnswerReadDto>> GetOrdersPagedAsync(
         int? cnnId = null, int? studentId = null, int? expertId = null,
@@ -66,20 +66,20 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
             ("to", to?.ToString("O")),
             ("page", page.ToString()),
             ("pageSize", pageSize.ToString()));
-        return SendWithAuthAsync<PaginatedResponse<OrderAnswerReadDto>>(HttpMethod.Get, $"api/orderanswers{qs}", null, ct);
+        return SendWithAuthAsync<PaginatedResponse<OrderAnswerReadDto>>(HttpMethod.Get, $"api/OrderAnswers{qs}", null, ct);
     }
 
     public Task<OrderAnswerReadDto> GetOrderByIdAsync(int id, CancellationToken ct = default) =>
-        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Get, $"api/orderanswers/{id}", null, ct);
+        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Get, $"api/OrderAnswers/{id}", null, ct);
 
     public Task<OrderAnswerReadDto> ClaimOrderAsync(int id, CancellationToken ct = default) =>
-        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Post, $"api/orderanswers/{id}/claim", null, ct);
+        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Post, $"api/OrderAnswers/{id}/claim", null, ct);
 
     public Task<OrderAnswerReadDto> UpdateOrderAsync(int id, OrderAnswerUpdateDto dto, CancellationToken ct = default) =>
-        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Put, $"api/orderanswers/{id}", ToJsonContent(dto), ct);
+        SendWithAuthAsync<OrderAnswerReadDto>(HttpMethod.Put, $"api/OrderAnswers/{id}", ToJsonContent(dto), ct);
 
     public Task RejectOrderAsync(int id, string reason, CancellationToken ct = default) =>
-        SendNoContentWithAuthAsync(HttpMethod.Post, $"api/orderanswers/{id}/reject",
+        SendNoContentWithAuthAsync(HttpMethod.Post, $"api/OrderAnswers/{id}/reject",
             ToJsonContent(new OrderAnswerRejectDto { Reason = reason }), ct);
 
     // ===== Reviews =====

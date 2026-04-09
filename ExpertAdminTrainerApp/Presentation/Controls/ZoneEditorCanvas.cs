@@ -557,6 +557,7 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
         if (zones is null) return;
 
         string? rowGroup = count > 1 ? Guid.NewGuid().ToString("N") : null;
+        var sharedTask = ShareTaskAcrossRowCells(StampFieldType, count);
 
         BeginBatchUpdate();
         try
@@ -565,9 +566,11 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
             {
                 var zone = new ZoneDefinition
                 {
-                    FieldName = count > 1 ? $"{baseName}_{baseTask + i}" : baseName,
+                    FieldName = count > 1
+                        ? (sharedTask ? $"{baseName}_{i}" : $"{baseName}_{baseTask + i}")
+                        : baseName,
                     FieldType = StampFieldType,
-                    TaskNumber = baseTask + i,
+                    TaskNumber = sharedTask ? baseTask : baseTask + i,
                     X = Math.Clamp(xPct + i * (w + gap), 0, 100 - w),
                     Y = Math.Clamp(yPct, 0, 100 - h),
                     Width = w,
@@ -586,10 +589,19 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
         }
     }
 
+    private static bool ShareTaskAcrossRowCells(ZoneFieldType fieldType, int count) =>
+        count > 1 && (fieldType is ZoneFieldType.ShortAnswer or ZoneFieldType.Correction);
+
     private void InsertPresetAt(ZonePresetTemplate preset, Point pos)
     {
         var zones = Zones as IList<ZoneDefinition>;
         if (zones is null) return;
+
+        if (string.Equals(preset.Id, ZonePresetTemplate.CorrectionTaskNumberThenAnswerId, StringComparison.Ordinal))
+        {
+            InsertCorrectionTaskNumberThenAnswerPreset(preset, pos);
+            return;
+        }
 
         int count = preset.CellCount < 0 ? Math.Max(1, RowCellCount) : preset.CellCount;
         var (xPct, yPct) = PixelsToPercent(pos.X, pos.Y);
@@ -598,6 +610,7 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
         float gap = CellGapPercent;
         int baseTask = StampTaskNumber;
         string? rowGroup = count > 1 ? Guid.NewGuid().ToString("N") : null;
+        var sharedTask = ShareTaskAcrossRowCells(preset.FieldType, count);
 
         for (int i = 0; i < count; i++)
         {
@@ -606,9 +619,11 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
             var yi = Math.Clamp(yPct, 0, 100 - h);
             var zone = new ZoneDefinition
             {
-                FieldName = count > 1 ? $"{preset.BaseFieldName}_{baseTask + i}" : preset.BaseFieldName,
+                FieldName = count > 1
+                    ? (sharedTask ? $"{preset.BaseFieldName}_{i}" : $"{preset.BaseFieldName}_{baseTask + i}")
+                    : preset.BaseFieldName,
                 FieldType = preset.FieldType,
-                TaskNumber = baseTask + i,
+                TaskNumber = sharedTask ? baseTask : baseTask + i,
                 X = xi,
                 Y = yi,
                 Width = w,
@@ -619,6 +634,49 @@ public class ZoneEditorCanvas : BlankDisplayCanvas
                 Validation = validation
             };
             zones.Add(zone);
+        }
+    }
+
+    /// <summary>
+    /// Ряд «исправление»: 2 ячейки номера задания, затем <see cref="RowCellCount"/> ячеек ответа; одна группа, один TaskNumber.
+    /// </summary>
+    private void InsertCorrectionTaskNumberThenAnswerPreset(ZonePresetTemplate preset, Point pos)
+    {
+        var zones = Zones as IList<ZoneDefinition>;
+        if (zones is null) return;
+
+        const int taskDigitCells = 2;
+        var answerCells = Math.Max(1, RowCellCount);
+        var total = taskDigitCells + answerCells;
+        var (xPct, yPct) = PixelsToPercent(pos.X, pos.Y);
+        float w = CellWidthPercent;
+        float h = CellHeightPercent;
+        float gap = CellGapPercent;
+        int baseTask = StampTaskNumber;
+        var rowGroup = Guid.NewGuid().ToString("N");
+        var taskNumRules = new ZoneValidationRules { DigitsOnly = true, MinLength = 1, MaxLength = 2 };
+
+        for (var i = 0; i < total; i++)
+        {
+            var xi = Math.Clamp(xPct + i * (w + gap), 0, 100 - w);
+            var yi = Math.Clamp(yPct, 0, 100 - h);
+            var isTaskNum = i < taskDigitCells;
+            zones.Add(new ZoneDefinition
+            {
+                FieldName = isTaskNum
+                    ? $"{preset.BaseFieldName}_номер_{i}"
+                    : $"{preset.BaseFieldName}_ответ_{i - taskDigitCells}",
+                FieldType = ZoneFieldType.Correction,
+                TaskNumber = baseTask,
+                X = xi,
+                Y = yi,
+                Width = w,
+                Height = h,
+                GroupId = rowGroup,
+                FieldRole = isTaskNum ? "correction_wrong_task_number" : "correction_replacement_answer",
+                InputMode = ZoneInputMode.Cell,
+                Validation = isTaskNum ? ZoneDefinitionCopy.CloneValidation(taskNumRules) : null
+            });
         }
     }
 

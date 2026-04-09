@@ -3,6 +3,8 @@ namespace ExpertAdminTrainerApp.Domain;
 /// <summary>Описание пресета для вставки группы зон по клику на бланк.</summary>
 public sealed class ZonePresetTemplate
 {
+    public const string CorrectionTaskNumberThenAnswerId = "correction_task_number_then_answer";
+
     public string Id { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string BaseFieldName { get; init; } = string.Empty;
@@ -186,6 +188,15 @@ public sealed class ZonePresetTemplate
             BaseFieldName = "исправление",
             FieldRole = null,
             CellCount = -1,
+            FieldType = ZoneFieldType.Correction
+        },
+        new ZonePresetTemplate
+        {
+            Id = CorrectionTaskNumberThenAnswerId,
+            DisplayName = "Исправление: номер задания (2 яч.) + ответ (кол-во из панели)",
+            BaseFieldName = "исправление",
+            FieldRole = null,
+            CellCount = 1,
             FieldType = ZoneFieldType.Correction
         },
         new ZonePresetTemplate

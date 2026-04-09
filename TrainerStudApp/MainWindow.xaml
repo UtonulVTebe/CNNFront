@@ -195,7 +195,7 @@
                             <TextBlock TextWrapping="Wrap" FontSize="13" Opacity="0.88" LineHeight="20"
                                        Text="Слева — КИМ (можно смотреть без ограничений). Справа — одна активная сессия бланков: ответы хранятся только в текущем запуске экзамена." />
                             <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" FontSize="12" Opacity="0.75" LineHeight="18"
-                                       Text="Новая попытка по тому же варианту: вкладка «Каталог» → снова «Начать экзамен» — черновик обнулится. Каждая отправка эксперту — отдельная загрузка пакета; в «Проверках» по одному CNN можно оформить несколько заказов с разными файлами." />
+                                       Text="Отправка эксперту: 1) заполните бланки; 2) «Загрузить пакет на сервер»; 3) вкладка «Проверки» → «Создать». Новая попытка по тому же варианту: «Каталог» → снова «Начать экзамен» — черновик обнулится. Каждая отправка — отдельный файл; по одному CNN можно несколько заказов." />
                         </StackPanel>
                     </Border>
 
@@ -257,6 +257,7 @@
 
                         <Grid Grid.Row="0" Margin="0,0,0,8">
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -334,13 +335,23 @@
                                            Content="Завершить и проверить"
                                            Command="{Binding Exam.FinishAndGradeCommand}" />
                                 <ui:Button Margin="0,0,6,4" Appearance="Secondary"
-                                           Content="Загрузить ответ для эксперта"
+                                           Content="Загрузить пакет на сервер"
                                            Command="{Binding UploadSubmissionForReviewCommand}"
-                                           ToolTip="Собрать пакет ответа, отправить на сервер и открыть «Проверки» с уже прикреплённым файлом." />
+                                           ToolTip="Собрать JSON (бланк + ответы), загрузить в хранилище сервера и перейти к оформлению заказа во вкладке «Проверки». Заказ создаётся отдельной кнопкой «Создать»." />
                                 <ui:Button Margin="0,0,6,4" Appearance="Secondary"
                                            Content="Сохранить пакет локально"
                                            Command="{Binding SaveSubmissionLocalCommand}" />
                             </WrapPanel>
+                            <Border Grid.Row="4" Margin="0,4,0,0" Padding="10,8" CornerRadius="6"
+                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                                    Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                <StackPanel>
+                                    <TextBlock FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"
+                                               Text="Как отправить работу эксперту" />
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.88" LineHeight="17"
+                                               Text="1) Заполните бланки. 2) Нажмите «Загрузить пакет на сервер» — файл уйдёт на сервер. 3) Откроется «Проверки»: проверьте вариант (CNN) и нажмите «Создать». Галочка «Сразу в очередь» — сразу статус «В очереди на проверку»; без неё заказ останется черновиком." />
+                                </StackPanel>
+                            </Border>
                         </Grid>
 
                         <Border Grid.Row="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
@@ -381,7 +392,7 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="№" Binding="{Binding TaskId}" Width="50" IsReadOnly="True" />
                                 <DataGridCheckBoxColumn Header="Верно" Binding="{Binding IsCorrect}" IsReadOnly="True" />
-                                <DataGridTextColumn Header="Эталон" Binding="{Binding Expected}" Width="*" IsReadOnly="True" />
+                                <DataGridTextColumn Header="Правильный ответ" Binding="{Binding Expected}" Width="*" IsReadOnly="True" />
                                 <DataGridTextColumn Header="Ваш ответ" Binding="{Binding Actual}" Width="*" IsReadOnly="True" />
                             </DataGrid.Columns>
                         </DataGrid>
@@ -419,8 +430,21 @@
                     <Border Grid.Row="1" Margin="0,0,0,10" Padding="12,10" CornerRadius="8"
                             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
                             Background="{DynamicResource ControlFillColorSecondaryBrush}">
-                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.78" LineHeight="18"
-                                   Text="По одному варианту (CNN) можно создать несколько заказов: после каждой новой работы снова загрузите ответ в «Экзамене», затем оформите заказ — у каждой отправки свой файл." />
+                        <StackPanel>
+                            <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.82" LineHeight="18"
+                                       Text="После «Загрузить пакет на сервер» во вкладке «Экзамен» ссылка на файл подставляется сюда автоматически, вариант (CNN) выбирается сам — остаётся нажать «Создать». По одному CNN можно несколько заказов с разными файлами." />
+                            <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" FontSize="12" Opacity="0.78" LineHeight="18"
+                                       Text="Каждая новая работа: снова загрузите пакет в «Экзамене», затем создайте заказ." />
+                            <Expander Margin="0,12,0,0" Background="Transparent">
+                                <Expander.Header>
+                                    <TextBlock Text="Для эксперта / что в файле по ссылке" FontSize="12"
+                                               Opacity="0.9" TextWrapping="Wrap" />
+                                </Expander.Header>
+                                <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" FontSize="11" Opacity="0.85"
+                                           LineHeight="17"
+                                           Text="Один JSON (документ пакета): поля schemaVersion, cnnId, полный шаблон бланков template (страницы и зоны), словарь answers (ключи вида «номерСтраницы|idЗоны»), при необходимости answerPayload. Имена в camelCase, перечисления — строками. Программа эксперта скачивает текст по answerUrl и по cnnId заказа находит у варианта материал «Бланки» с заголовком «Разметка бланков (JSON)» — от него считаются URL сканов страниц; без этого превью картинок может не быть, хотя ответы в JSON есть. Доступ к ссылке и картинкам — по правам того, кто открывает заказ." />
+                            </Expander>
+                        </StackPanel>
                     </Border>
                     <TextBlock Grid.Row="2" Text="{Binding Orders.OrdersMessage}" TextWrapping="Wrap" Opacity="0.75"
                                Margin="0,0,0,8" FontSize="12" />
@@ -456,7 +480,7 @@
                                 <StackPanel Visibility="{Binding Orders.ShowCreatePanel, Converter={StaticResource BoolVis}}">
                                     <TextBlock FontWeight="SemiBold" FontSize="14" Text="Новый заказ" Margin="0,0,0,8" />
                                     <TextBlock TextWrapping="Wrap" Opacity="0.75" Margin="0,0,0,8"
-                                               Text="Выберите вариант (CNN), к которому относится работа. Файл с ответом подставляется автоматически после загрузки в разделе «Экзамен»." />
+                                               Text="Выберите вариант (CNN). После «Загрузить пакет на сервер» во вкладке «Экзамен» ссылка и вариант подставляются автоматически." />
                                     <TextBlock Margin="0,0,0,4" Text="Вариант" />
                                     <ComboBox ItemsSource="{Binding Orders.CnnOptions}"
                                               SelectedItem="{Binding Orders.NewOrderSelectedCnn, Mode=TwoWay}"
@@ -477,7 +501,7 @@
                                                Text="Файл с работой уже прикреплён — можно создавать заказ. Ссылку видеть не обязательно." />
                                     <TextBlock Margin="0,12,0,4" TextWrapping="Wrap" Opacity="0.75"
                                                Visibility="{Binding Orders.NewOrderNeedsAnswerFile, Converter={StaticResource BoolVis}}"
-                                               Text="Сначала откройте «Экзамен» и нажмите «Загрузить ответ для эксперта». Если загрузка была в другом месте — разверните блок ниже и вставьте ссылку вручную." />
+                                               Text="Сначала во вкладке «Экзамен» нажмите «Загрузить пакет на сервер». Если файл загружали иначе — разверните блок ниже и вставьте ссылку вручную." />
 
                                     <Expander Margin="0,10,0,0" Background="Transparent"
                                               IsExpanded="{Binding Orders.ShowNewOrderUrlAdvanced, Mode=TwoWay}">
@@ -515,7 +539,7 @@
                                     <TextBlock Margin="0,12,0,4" TextWrapping="Wrap" Opacity="0.8"
                                                Foreground="#b06000"
                                                Visibility="{Binding Orders.EditCardNeedsAnswerUrl, Converter={StaticResource BoolVis}}"
-                                               Text="Файл ещё не прикреплён: загрузите ответ в «Экзамене» или вставьте ссылку в блоке ниже." />
+                                               Text="Файл ещё не прикреплён: загрузите пакет в «Экзамене» («Загрузить пакет на сервер») или вставьте ссылку в блоке ниже." />
 
                                     <Expander Margin="0,10,0,0" Background="Transparent"
                                               IsExpanded="{Binding Orders.ShowEditAnswerUrlAdvanced, Mode=TwoWay}">

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Net;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -136,7 +137,8 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
         }
     }
 
-    private async Task EnsureCnnOptionsAsync()
+    /// <summary>Подгружает список вариантов (CNN) для комбо «Новый заказ», если ещё пуст.</summary>
+    public async Task EnsureCnnOptionsAsync()
     {
         if (CnnOptions.Count > 0) return;
         try
@@ -149,6 +151,23 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
         {
             /* каталог опционален для формы */
         }
+    }
+
+    /// <summary>После загрузки пакета из экзамена: открыть форму нового заказа и выбрать CNN.</summary>
+    public async Task PrepareAfterSubmissionUploadAsync(int cnnId)
+    {
+        await EnsureCnnOptionsAsync();
+        NewOrderSelectedCnn = CnnOptions.FirstOrDefault(c => c.Id == cnnId);
+        ShowCreatePanel = true;
+        ShowNewOrderUrlAdvanced = string.IsNullOrWhiteSpace(NewOrderAnswerUrl);
+        SelectedOrder = null;
+
+        if (NewOrderSelectedCnn is null)
+            OrdersMessage =
+                "Ссылка на файл подставлена. Вариант (CNN) в списке не найден — выберите его вручную, затем нажмите «Создать».";
+        else
+            OrdersMessage =
+                "Ссылка на файл подставлена, вариант выбран. Нажмите «Создать» (при необходимости снимите «Сразу в очередь»).";
     }
 
     private async Task SyncSelectionAsync(OrderAnswerReadDto? selected)
@@ -317,7 +336,7 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
         if (NewOrderSelectedCnn is null || string.IsNullOrWhiteSpace(NewOrderAnswerUrl))
         {
             OrdersMessage =
-                "Выберите вариант. Сначала в разделе «Экзамен» нажмите «Загрузить ответ для эксперта» — или откройте «Дополнительно» и вставьте ссылку вручную.";
+                "Выберите вариант. Сначала в «Экзамене» нажмите «Загрузить пакет на сервер» — или откройте «Дополнительно» и вставьте ссылку вручную.";
             return;
         }
 

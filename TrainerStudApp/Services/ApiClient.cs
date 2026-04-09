@@ -174,13 +174,13 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
 
     public async Task<OrderAnswerReadDto> CreateOrderAnswerAsync(OrderAnswerCreateDto dto, CancellationToken ct = default)
     {
-        var response = await SendAuthPostAsync("api/orderanswers", dto, ct);
+        var response = await SendAuthPostAsync("api/OrderAnswers", dto, ct);
         return await ReadAsAsync<OrderAnswerReadDto>(response, ct);
     }
 
     public async Task<IReadOnlyList<OrderAnswerReadDto>> GetMyOrderAnswersMineAsync(CancellationToken ct = default)
     {
-        var response = await SendAuthGetAsync("api/orderanswers/mine", ct);
+        var response = await SendAuthGetAsync("api/OrderAnswers/mine", ct);
         var list = await ReadAsAsync<List<OrderAnswerReadDto>>(response, ct);
         return list;
     }
@@ -195,13 +195,13 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
 
     public async Task<OrderAnswerReadDto> GetOrderAnswerByIdAsync(int id, CancellationToken ct = default)
     {
-        var response = await SendAuthGetAsync($"api/orderanswers/{id}", ct);
+        var response = await SendAuthGetAsync($"api/OrderAnswers/{id}", ct);
         return await ReadAsAsync<OrderAnswerReadDto>(response, ct);
     }
 
     public async Task<OrderAnswerReadDto> UpdateOrderAnswerAsync(int id, OrderAnswerUpdateDto dto, CancellationToken ct = default)
     {
-        var response = await SendAuthPutAsync($"api/orderanswers/{id}", dto, ct);
+        var response = await SendAuthPutAsync($"api/OrderAnswers/{id}", dto, ct);
         return await ReadAsAsync<OrderAnswerReadDto>(response, ct);
     }
 
@@ -226,7 +226,7 @@ public sealed class ApiClient(HttpClient httpClient, ITokenStore tokenStore) : I
             parts.Add("from=" + Uri.EscapeDataString(from.ToUniversalTime().ToString("O")));
         if (q.ToChangedAtUtc is { } to)
             parts.Add("to=" + Uri.EscapeDataString(to.ToUniversalTime().ToString("O")));
-        return "api/orderanswers?" + string.Join("&", parts);
+        return "api/OrderAnswers?" + string.Join("&", parts);
     }
 
     private async Task<HttpResponseMessage> SendAuthGetAsync(string relativeUrl, CancellationToken ct)

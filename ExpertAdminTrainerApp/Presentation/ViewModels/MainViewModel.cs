@@ -89,8 +89,17 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
     // ===== Просмотр пакета ответа ученика (JSON) =====
     [ObservableProperty] private ExamSubmissionDocument? orderSubmissionDocument;
     [ObservableProperty] private string? orderSubmissionBlankJsonUrl;
-    [ObservableProperty] private int orderSubmissionPageIndex;
+    /// <summary>Индекс страницы в полном шаблоне для ключей answers (передаётся в канву превью).</summary>
+    [ObservableProperty] private int orderSubmissionTemplatePageIndex;
     [ObservableProperty] private ImageSource? orderSubmissionPageImage;
+    [ObservableProperty] private OrderExpertSheet2PageItem? selectedOrderExpertSheet2Page;
+    [ObservableProperty] private double orderPreviewZoom = 1.0;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOrderSubmissionLoadError))]
+    private string? orderSubmissionLoadError;
+    [ObservableProperty] private bool hasOrderExpertSheet2Pages;
+    [ObservableProperty] private bool hasOrderExpPartRows;
+    [ObservableProperty] private bool showOrderSubmissionNoSheet2Hint;
 
     // ===== Review =====
     [ObservableProperty] private ReviewReadDto? currentReview;
@@ -124,7 +133,8 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
     public ObservableCollection<CnnMaterialDto> OrderCriteriaMaterials { get; } = [];
     public ObservableCollection<UserListItemDto> Users { get; } = [];
     public ObservableCollection<ReviewCriterionDto> ReviewCriteria { get; } = [];
-    public ObservableCollection<BlankPageDefinition> OrderSubmissionPages { get; } = [];
+    public ObservableCollection<OrderExpertSheet2PageItem> OrderExpertSheet2Pages { get; } = [];
+    public ObservableCollection<AnswerExpPartItem> OrderExpPartRows { get; } = [];
     public ObservableCollection<ZoneDefinition> OrderSubmissionCurrentZones { get; } = [];
 
     private DictionaryAnswerSink? _orderSubmissionAnswerSink;
@@ -158,8 +168,8 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
         SelectedUser is not null && IsUserRoleExpert(SelectedUser.Role);
     public bool HasReview => CurrentReview is not null;
     public bool HasNoReview => CurrentReview is null;
-    public bool HasOrderSubmissionPreview => OrderSubmissionDocument is { Template.Pages.Count: > 0 };
     public IZoneAnswerSink? OrderSubmissionAnswerSink => _orderSubmissionAnswerSink;
+    public bool HasOrderSubmissionLoadError => !string.IsNullOrWhiteSpace(OrderSubmissionLoadError);
     public string EditingMaterialKindLabel => KindLabel(EditingMaterialKind);
 
     /// <summary>Кнопка «Взять в работу»: Expert или Admin; только <see cref="OrderAnswerStatus.QueueForCheck"/>; без эксперта; не свой заказ (если из JWT известен числовой Id).</summary>
@@ -263,7 +273,6 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
             if (IsAdminOrExpert) _ = LoadReview(value.Id);
             OnPropertyChanged(nameof(SelectedOrderStatusText));
             RaiseExpertOrderFlags();
-            _ = TryLoadOrderSubmissionPreviewAsync(value);
             return;
         }
 
@@ -277,13 +286,11 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
         IsEditingReview = false;
         _ = LoadOrderCnnDetails(value.CnnId);
         if (IsAdminOrExpert) _ = LoadReview(value.Id);
-        _ = HydrateSelectedOrderFromServerAsync(value.Id);
+        _ = HydrateSelectedOrderFromServerAsync(value);
     }
 
-    partial void OnOrderSubmissionPageIndexChanged(int value) => _ = LoadOrderSubmissionPageAsync();
-
-    partial void OnOrderSubmissionDocumentChanged(ExamSubmissionDocument? value) =>
-        OnPropertyChanged(nameof(HasOrderSubmissionPreview));
+    partial void OnSelectedOrderExpertSheet2PageChanged(OrderExpertSheet2PageItem? value) =>
+        _ = LoadOrderSubmissionPageAsync();
 
     partial void OnSelectedUserChanged(UserListItemDto? value)
     {
@@ -475,8 +482,8 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
         }
         if (IsAdminOrExpert)
         {
-            await LoadQueue();
-            await LoadMyChecking();
+            await LoadQueueInternal(true);
+            await LoadMyCheckingInternal(true);
         }
     }
 
@@ -686,8 +693,11 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
     // ========== ORDERS ==========
 
     [RelayCommand]
-    private async Task LoadQueue()
+    private Task LoadQueue() => LoadQueueInternal(true);
+
+    private async Task LoadQueueInternal(bool restoreSelectionAfter)
     {
+        var keepId = restoreSelectionAfter ? SelectedQueueOrder?.Id : null;
         try
         {
             IsBusy = true;
@@ -698,12 +708,20 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
             StatusText = $"Заказов в очереди: {QueueOrders.Count}";
         }
         catch (Exception ex) { StatusText = $"Ошибка: {ex.Message}"; }
-        finally { IsBusy = false; }
+        finally
+        {
+            IsBusy = false;
+            if (restoreSelectionAfter)
+                TryReselectOrderByIdAfterListReload(keepId);
+        }
     }
 
     [RelayCommand]
-    private async Task LoadMyChecking()
+    private Task LoadMyChecking() => LoadMyCheckingInternal(true);
+
+    private async Task LoadMyCheckingInternal(bool restoreSelectionAfter)
     {
+        var keepId = restoreSelectionAfter ? SelectedQueueOrder?.Id : null;
         try
         {
             IsBusy = true;
@@ -719,7 +737,36 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
                 : $"Мои заказы в работе: {MyCheckingOrders.Count} из {page.TotalCount}.";
         }
         catch (Exception ex) { StatusText = $"Ошибка загрузки «Мои в работе»: {ex.Message}"; }
-        finally { IsBusy = false; }
+        finally
+        {
+            IsBusy = false;
+            if (restoreSelectionAfter)
+                TryReselectOrderByIdAfterListReload(keepId);
+        }
+    }
+
+    /// <summary>После Clear/перезагрузки списков восстановить выбранный заказ по Id (новый экземпляр DTO из API).</summary>
+    private void TryReselectOrderByIdAfterListReload(int? orderId)
+    {
+        if (orderId is null)
+            return;
+
+        var found = QueueOrders.FirstOrDefault(o => o.Id == orderId)
+                    ?? MyCheckingOrders.FirstOrDefault(o => o.Id == orderId);
+        if (found is null)
+            return;
+
+        _suppressSelectedOrderChanged = true;
+        try
+        {
+            SelectedQueueOrder = found;
+        }
+        finally
+        {
+            _suppressSelectedOrderChanged = false;
+        }
+
+        _ = TryLoadOrderSubmissionPreviewAsync(found);
     }
 
     /// <summary>Почему нельзя взять заказ; <c>null</c> — можно (или заказ не выбран — смотрите <see cref="CanClaimSelectedOrder"/>).</summary>
@@ -755,10 +802,10 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
         {
             IsBusy = true;
             var updated = await apiClient.ClaimOrderAsync(SelectedQueueOrder.Id);
-            ReplaceOrderInLists(updated);
             _suppressSelectedOrderChanged = true;
             try
             {
+                ReplaceOrderInLists(updated);
                 SelectedQueueOrder = updated;
             }
             finally
@@ -766,8 +813,9 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
                 _suppressSelectedOrderChanged = false;
             }
 
-            await LoadQueue();
-            await LoadMyChecking();
+            await LoadQueueInternal(false);
+            await LoadMyCheckingInternal(false);
+            TryReselectOrderByIdAfterListReload(updated.Id);
             StatusText = $"Заказ #{updated.Id} взят в работу.";
         }
         catch (Exception ex) { StatusText = $"Ошибка: {ex.Message}"; }
@@ -815,8 +863,8 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
         {
             IsBusy = true;
             await apiClient.RejectOrderAsync(SelectedQueueOrder.Id, reason);
-            await LoadQueue();
-            await LoadMyChecking();
+            await LoadQueueInternal(false);
+            await LoadMyCheckingInternal(false);
             SelectedQueueOrder = null;
             IsRejectingOrder = false;
             StatusText = "Заказ отклонён экспертом.";
@@ -937,10 +985,10 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
             try
             {
                 var fresh = await apiClient.GetOrderByIdAsync(orderId);
-                ReplaceOrderInLists(fresh);
                 _suppressSelectedOrderChanged = true;
                 try
                 {
+                    ReplaceOrderInLists(fresh);
                     if (SelectedQueueOrder?.Id == orderId)
                         SelectedQueueOrder = fresh;
                 }
@@ -951,8 +999,9 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
             }
             catch { /* карточка уже актуальна по Review */ }
 
-            await LoadQueue();
-            await LoadMyChecking();
+            await LoadQueueInternal(false);
+            await LoadMyCheckingInternal(false);
+            TryReselectOrderByIdAfterListReload(orderId);
             RaiseExpertOrderFlags();
         }
         catch (Exception ex)
@@ -1241,46 +1290,60 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
         if (mIdx >= 0) MyCheckingOrders[mIdx] = updated;
     }
 
-    private async Task HydrateSelectedOrderFromServerAsync(int id)
+    private async Task HydrateSelectedOrderFromServerAsync(OrderAnswerReadDto selected)
     {
+        OrderAnswerReadDto order;
         try
         {
-            var fresh = await apiClient.GetOrderByIdAsync(id);
-            ReplaceOrderInLists(fresh);
+            order = await apiClient.GetOrderByIdAsync(selected.Id);
+            // Сначала подменяем элемент в списке и SelectedQueueOrder под одним suppress, иначе ListBox по SelectedItem сбрасывает выбор (старая ссылка исчезает из ItemsSource).
             _suppressSelectedOrderChanged = true;
             try
             {
-                if (SelectedQueueOrder?.Id == id)
-                    SelectedQueueOrder = fresh;
+                ReplaceOrderInLists(order);
+                SelectedQueueOrder = order;
             }
             finally
             {
                 _suppressSelectedOrderChanged = false;
             }
-
-            UpdateAnswerUrl = fresh.AnswerUrl ?? string.Empty;
-            await LoadOrderCnnDetails(fresh.CnnId);
-            if (IsAdminOrExpert)
-                await LoadReview(fresh.Id);
-            OnPropertyChanged(nameof(SelectedOrderStatusText));
-            RaiseExpertOrderFlags();
-            await TryLoadOrderSubmissionPreviewAsync(fresh);
+        }
+        catch (ApiException ex) when (ex.StatusCode == 404)
+        {
+            // Некоторые API отдают заказ в списке очереди, но не по GET /{id}; используем уже загруженный DTO.
+            order = selected;
         }
         catch (Exception ex)
         {
-            StatusText = $"Не удалось обновить заказ #{id}: {ex.Message}";
+            StatusText = $"Не удалось обновить заказ #{selected.Id}: {ex.Message}";
+            return;
         }
+
+        UpdateAnswerUrl = order.AnswerUrl ?? string.Empty;
+        await LoadOrderCnnDetails(order.CnnId);
+        if (IsAdminOrExpert)
+            await LoadReview(order.Id);
+        OnPropertyChanged(nameof(SelectedOrderStatusText));
+        RaiseExpertOrderFlags();
+        await TryLoadOrderSubmissionPreviewAsync(order);
     }
 
     private void ClearOrderSubmissionPreview()
     {
         OrderSubmissionDocument = null;
         OrderSubmissionBlankJsonUrl = null;
-        OrderSubmissionPageIndex = 0;
+        OrderSubmissionTemplatePageIndex = 0;
         OrderSubmissionPageImage = null;
-        OrderSubmissionPages.Clear();
+        OrderExpertSheet2Pages.Clear();
+        OrderExpPartRows.Clear();
+        SelectedOrderExpertSheet2Page = null;
         OrderSubmissionCurrentZones.Clear();
         _orderSubmissionAnswerSink = null;
+        OrderPreviewZoom = 1.0;
+        OrderSubmissionLoadError = null;
+        HasOrderExpertSheet2Pages = false;
+        HasOrderExpPartRows = false;
+        ShowOrderSubmissionNoSheet2Hint = false;
         OnPropertyChanged(nameof(OrderSubmissionAnswerSink));
     }
 
@@ -1292,18 +1355,62 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
 
         try
         {
-            var text = await apiClient.DownloadTextAsync(order.AnswerUrl.Trim());
-            var doc = ExamSubmissionDocument.Deserialize(text);
-            if (doc?.Template is not { Pages.Count: > 0 })
+            string text;
+            try
+            {
+                text = await apiClient.DownloadTextAsync(order.AnswerUrl.Trim());
+            }
+            catch (Exception ex)
+            {
+                OrderSubmissionLoadError = $"Не удалось загрузить JSON ответа: {ex.Message}";
+                StatusText = OrderSubmissionLoadError;
                 return;
+            }
+
+            ExamSubmissionDocument? doc;
+            try
+            {
+                doc = ExamSubmissionDocument.Deserialize(text);
+            }
+            catch (Exception ex)
+            {
+                OrderSubmissionLoadError = $"Ответ не является ожидаемым JSON пакета: {ex.Message}";
+                StatusText = OrderSubmissionLoadError;
+                return;
+            }
+
+            if (doc?.Template is not { Pages.Count: > 0 })
+            {
+                OrderSubmissionLoadError = "В пакете нет шаблона бланка (template.pages пуст).";
+                StatusText = OrderSubmissionLoadError;
+                return;
+            }
 
             _orderSubmissionAnswerSink = new DictionaryAnswerSink(
                 new Dictionary<string, string>(doc.Answers, StringComparer.Ordinal));
             OnPropertyChanged(nameof(OrderSubmissionAnswerSink));
 
             OrderSubmissionDocument = doc;
-            foreach (var p in doc.Template.Pages)
-                OrderSubmissionPages.Add(p);
+
+            OrderExpPartRows.Clear();
+            if (doc.AnswerPayload?.ExpPart is { Count: > 0 } expPart)
+            {
+                foreach (var row in expPart)
+                    OrderExpPartRows.Add(row);
+            }
+
+            HasOrderExpPartRows = OrderExpPartRows.Count > 0;
+
+            OrderExpertSheet2Pages.Clear();
+            for (var i = 0; i < doc.Template.Pages.Count; i++)
+            {
+                var p = doc.Template.Pages[i];
+                if (p.BlankType == BlankType.AnswerSheet2)
+                    OrderExpertSheet2Pages.Add(new OrderExpertSheet2PageItem(p, i));
+            }
+
+            HasOrderExpertSheet2Pages = OrderExpertSheet2Pages.Count > 0;
+            ShowOrderSubmissionNoSheet2Hint = doc.Template.Pages.Count > 0 && !HasOrderExpertSheet2Pages;
 
             try
             {
@@ -1319,12 +1426,13 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
                 OrderSubmissionBlankJsonUrl = null;
             }
 
-            OrderSubmissionPageIndex = 0;
-            await LoadOrderSubmissionPageAsync();
+            SelectedOrderExpertSheet2Page = OrderExpertSheet2Pages.Count > 0 ? OrderExpertSheet2Pages[0] : null;
         }
-        catch
+        catch (Exception ex)
         {
             ClearOrderSubmissionPreview();
+            OrderSubmissionLoadError = $"Ошибка при разборе пакета: {ex.Message}";
+            StatusText = OrderSubmissionLoadError;
         }
     }
 
@@ -1332,12 +1440,14 @@ public partial class MainViewModel(IApiClient apiClient, ITokenStore tokenStore,
     {
         OrderSubmissionPageImage = null;
         OrderSubmissionCurrentZones.Clear();
-        var doc = OrderSubmissionDocument;
-        if (doc?.Template?.Pages is not { Count: > 0 } pages)
+        if (SelectedOrderExpertSheet2Page is not { } slot)
+        {
+            OrderSubmissionTemplatePageIndex = 0;
             return;
+        }
 
-        var idx = Math.Clamp(OrderSubmissionPageIndex, 0, pages.Count - 1);
-        var page = pages[idx];
+        var page = slot.Page;
+        OrderSubmissionTemplatePageIndex = slot.TemplatePageIndex;
         foreach (var z in page.Zones)
             OrderSubmissionCurrentZones.Add(z);
 

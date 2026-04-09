@@ -163,71 +163,117 @@
                             </StackPanel>
                         </ui:Card>
 
+                        <TextBlock Margin="0,8,0,0" Text="{Binding OrderSubmissionLoadError}" TextWrapping="Wrap"
+                                   Foreground="#C42B1C" FontSize="13"
+                                   Visibility="{Binding HasOrderSubmissionLoadError, Converter={StaticResource BoolVis}}" />
+
+                        <Expander Margin="0,8,0,0" Background="Transparent" FontSize="13">
+                            <Expander.Header>
+                                <TextBlock Text="Если превью или сводка не появились — что проверить" TextWrapping="Wrap"
+                                           Opacity="0.88" />
+                            </Expander.Header>
+                            <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" FontSize="12" Opacity="0.78" LineHeight="18"
+                                       Text="• По ссылке «Ответ ученика» (answerUrl) должен отдаваться JSON пакета: template.pages, answers (ключи «индексСтраницы|idЗоны»), опционально answerPayload.Exp_Part — сводка развёрнутой части.&#10;• Сканы бланка №2: у CNN нужен материал «Бланки» с заголовком «Разметка бланков (JSON)» — от его URL строятся пути к изображениям.&#10;• Регистрация и бланк №1 в превью не показываются — только развёрнутая часть (№2)." />
+                        </Expander>
+
                         <ui:Card Padding="10" Margin="0,6,0,0"
-                                 Visibility="{Binding HasOrderSubmissionPreview, Converter={StaticResource BoolVis}}">
+                                 Visibility="{Binding HasOrderExpPartRows, Converter={StaticResource BoolVis}}">
                             <StackPanel>
-                                <TextBlock Text="Бланк (пакет JSON)" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                <TextBlock Text="Развёрнутая часть (сводка из пакета)" FontWeight="SemiBold" Margin="0,0,0,4" />
                                 <TextBlock TextWrapping="Wrap" Opacity="0.55" FontSize="13" Margin="0,0,0,8"
-                                           Text="Тот же порядок страниц и Id зон, что у ученика. Фон — относительно материала «Разметка бланков (JSON)» на КИМ." />
+                                           Text="Поля answerPayload.Exp_Part: задание, тип ответа, текст (или пометка о PDF)." />
+                                <DataGrid ItemsSource="{Binding OrderExpPartRows}" AutoGenerateColumns="False"
+                                          IsReadOnly="True" HeadersVisibility="Column" MaxHeight="220"
+                                          CanUserAddRows="False" GridLinesVisibility="Horizontal">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Задание" Binding="{Binding TaskId}" Width="70" />
+                                        <DataGridTextColumn Header="Тип" Binding="{Binding Type}" Width="60" />
+                                        <DataGridTextColumn Header="Ответ" Binding="{Binding Answer}" Width="*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </StackPanel>
+                        </ui:Card>
+
+                        <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" FontSize="13" Opacity="0.75"
+                                   Visibility="{Binding ShowOrderSubmissionNoSheet2Hint, Converter={StaticResource BoolVis}}"
+                                   Text="В шаблоне этого варианта нет страниц бланка ответов №2 (AnswerSheet2). Проверяйте развёрнутую часть по сводке выше и по материалам КИМ." />
+
+                        <ui:Card Padding="10" Margin="0,6,0,0"
+                                 Visibility="{Binding HasOrderExpertSheet2Pages, Converter={StaticResource BoolVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Бланк ответов №2 (скан и ответы в зонах)" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                <TextBlock TextWrapping="Wrap" Opacity="0.55" FontSize="13" Margin="0,0,0,8"
+                                           Text="Только листы бланка №2; порядок и Id зон совпадают с пакетом ученика. Скан подгружается по шаблону и материалу «Разметка бланков (JSON)»." />
                                 <DockPanel Margin="0,0,0,8">
                                     <TextBlock DockPanel.Dock="Left" Text="Страница:" VerticalAlignment="Center"
                                                Margin="0,0,8,0" />
-                                    <ComboBox ItemsSource="{Binding OrderSubmissionPages}"
-                                              SelectedIndex="{Binding OrderSubmissionPageIndex, Mode=TwoWay}">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock>
-                                                    <Run Text="{Binding BlankType, Mode=OneWay}" />
-                                                    <Run Text=" · стр. " />
-                                                    <Run Text="{Binding PageNumber, Mode=OneWay}" />
-                                                </TextBlock>
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
+                                    <ComboBox ItemsSource="{Binding OrderExpertSheet2Pages}"
+                                              SelectedItem="{Binding SelectedOrderExpertSheet2Page, Mode=TwoWay}"
+                                              DisplayMemberPath="DisplayLabel" />
+                                </DockPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock DockPanel.Dock="Left" Text="Масштаб:" VerticalAlignment="Center"
+                                               Margin="0,0,8,0" />
+                                    <Slider Minimum="0.5" Maximum="2" TickFrequency="0.25" IsSnapToTickEnabled="True"
+                                            Value="{Binding OrderPreviewZoom}" AutoToolTipPlacement="TopLeft" />
                                 </DockPanel>
                                 <Border BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
-                                        CornerRadius="4" ClipToBounds="True" MaxHeight="520" MinHeight="220">
+                                        CornerRadius="4" ClipToBounds="True" MinHeight="200" MaxHeight="720"
+                                        UseLayoutRounding="True" SnapsToDevicePixels="True">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                                  HorizontalScrollBarVisibility="Auto">
-                                        <controls:BlankSubmissionReviewCanvas MinWidth="400" MinHeight="280"
-                                                                              Zones="{Binding OrderSubmissionCurrentZones}"
-                                                                              ImageSource="{Binding OrderSubmissionPageImage}"
-                                                                              PageIndex="{Binding OrderSubmissionPageIndex}"
-                                                                              AnswerSink="{Binding OrderSubmissionAnswerSink}" />
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  UseLayoutRounding="True">
+                                        <Grid HorizontalAlignment="Left" VerticalAlignment="Top"
+                                              UseLayoutRounding="True" SnapsToDevicePixels="True">
+                                            <Grid.LayoutTransform>
+                                                <ScaleTransform ScaleX="{Binding OrderPreviewZoom}"
+                                                                ScaleY="{Binding OrderPreviewZoom}" />
+                                            </Grid.LayoutTransform>
+                                            <controls:BlankSubmissionReviewCanvas MinWidth="920" MinHeight="640"
+                                                                                  Zones="{Binding OrderSubmissionCurrentZones}"
+                                                                                  ImageSource="{Binding OrderSubmissionPageImage}"
+                                                                                  PageIndex="{Binding OrderSubmissionTemplatePageIndex}"
+                                                                                  AnswerSink="{Binding OrderSubmissionAnswerSink}" />
+                                        </Grid>
                                     </ScrollViewer>
                                 </Border>
                             </StackPanel>
                         </ui:Card>
 
-                        <ui:Card Padding="10" Margin="0,6,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Задания (КИМ)" FontWeight="SemiBold" Margin="0,0,0,4" />
-                                <ItemsControl ItemsSource="{Binding OrderKimMaterials}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <DockPanel Margin="0,2">
-                                                <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Content="Открыть"
-                                                           Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                           CommandParameter="{Binding Url}" />
-                                                <TextBlock Text="{Binding Title, TargetNullValue='(без названия)'}" VerticalAlignment="Center" />
-                                            </DockPanel>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                <TextBlock Text="(нет)" Opacity="0.35" FontSize="14">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding OrderKimMaterials.Count}" Value="0">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </StackPanel>
-                        </ui:Card>
+                        <Expander Margin="0,6,0,0" IsExpanded="False" Padding="0,4,0,0">
+                            <Expander.Header>
+                                <TextBlock FontWeight="SemiBold" Text="Задания (КИМ)" />
+                            </Expander.Header>
+                            <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
+                                <StackPanel>
+                                    <ItemsControl ItemsSource="{Binding OrderKimMaterials}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="0,2">
+                                                    <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Content="Открыть"
+                                                               Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                               CommandParameter="{Binding Url}" />
+                                                    <TextBlock Text="{Binding Title, TargetNullValue='(без названия)'}"
+                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="(нет)" Opacity="0.35" FontSize="14" Margin="0,4,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding OrderKimMaterials.Count}" Value="0">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Expander>
 
                         <ui:Card Padding="10" Margin="0,6,0,0"
                                  Visibility="{Binding IsAdminOrExpert, Converter={StaticResource BoolVis}}">

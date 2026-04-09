@@ -291,7 +291,8 @@ public class BlankSubmissionReviewCanvas : BlankDisplayCanvas
         var ink = new InkCanvas
         {
             Background = InkFieldBackground,
-            IsEnabled = false
+            IsEnabled = false,
+            ClipToBounds = true
         };
         if (initialStrokes is { Count: > 0 })
             ink.Strokes = initialStrokes;
@@ -310,7 +311,7 @@ public class BlankSubmissionReviewCanvas : BlankDisplayCanvas
         var raw = sink?.GetAnswer(key);
         ZoneInkAnswerCodec.TryParse(raw, out var initialText, out var initialStrokes);
 
-        var root = new Grid();
+        var root = new Grid { ClipToBounds = true };
 
         var tb = new TextBox
         {
@@ -334,6 +335,7 @@ public class BlankSubmissionReviewCanvas : BlankDisplayCanvas
         {
             Background = Brushes.Transparent,
             IsEnabled = false,
+            ClipToBounds = true,
             VerticalAlignment = VerticalAlignment.Stretch,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };

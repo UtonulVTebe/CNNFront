@@ -569,7 +569,8 @@ public partial class BlankConstructorViewModel : BlankViewerViewModel
     [RelayCommand]
     private void AddAutoAnswerRow()
     {
-        AutoAnswersEdit.Add(new AutoAnswerEntry { TaskId = 1, Answer = string.Empty });
+        var nextId = AutoAnswersEdit.Count == 0 ? 1 : AutoAnswersEdit.Max(e => e.TaskId) + 1;
+        AutoAnswersEdit.Add(new AutoAnswerEntry { TaskId = nextId, Answer = string.Empty });
     }
 
     [RelayCommand]
