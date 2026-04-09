@@ -26,6 +26,12 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
 
     [ObservableProperty] private string newOrderAnswerUrl = string.Empty;
 
+    /// <summary>Развёрнут блок ручного ввода ссылки (новый заказ).</summary>
+    [ObservableProperty] private bool showNewOrderUrlAdvanced;
+
+    /// <summary>Развёрнут блок ручного ввода ссылки (карточка заказа).</summary>
+    [ObservableProperty] private bool showEditAnswerUrlAdvanced;
+
     [ObservableProperty] private bool queueImmediatelyAfterCreate = true;
 
     [ObservableProperty] private ReviewReadDto? currentReview;
@@ -57,6 +63,14 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
 
     public bool HasCurrentReview => CurrentReview is not null;
 
+    public bool NewOrderHasAnswerFile => !string.IsNullOrWhiteSpace(NewOrderAnswerUrl);
+
+    public bool NewOrderNeedsAnswerFile => string.IsNullOrWhiteSpace(NewOrderAnswerUrl);
+
+    public bool EditCardHasAnswerUrl => !string.IsNullOrWhiteSpace(EditAnswerUrl);
+
+    public bool EditCardNeedsAnswerUrl => string.IsNullOrWhiteSpace(EditAnswerUrl);
+
     partial void OnSelectedOrderChanged(OrderAnswerReadDto? value)
     {
         OnPropertyChanged(nameof(HasSelectedOrder));
@@ -70,6 +84,14 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
     {
         OnPropertyChanged(nameof(CanSaveUrl));
         OnPropertyChanged(nameof(CanSubmitQueue));
+        OnPropertyChanged(nameof(EditCardHasAnswerUrl));
+        OnPropertyChanged(nameof(EditCardNeedsAnswerUrl));
+    }
+
+    partial void OnNewOrderAnswerUrlChanged(string value)
+    {
+        OnPropertyChanged(nameof(NewOrderHasAnswerFile));
+        OnPropertyChanged(nameof(NewOrderNeedsAnswerFile));
     }
 
     public void Reset()
@@ -82,6 +104,8 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
         ShowCreatePanel = false;
         NewOrderSelectedCnn = null;
         NewOrderAnswerUrl = string.Empty;
+        ShowNewOrderUrlAdvanced = false;
+        ShowEditAnswerUrlAdvanced = false;
         CurrentReview = null;
         ReviewNotFound = false;
         RejectionDisplay = null;
@@ -91,13 +115,14 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
     [RelayCommand]
     private async Task RefreshMineAsync()
     {
-        IsBusy = true;
+        var keepOrderId = SelectedOrder?.Id;
         try
         {
             var list = await apiClient.GetMyOrderAnswersMineAsync(default);
             Orders.Clear();
             foreach (var o in list)
                 Orders.Add(o);
+            SelectedOrder = keepOrderId is null ? null : Orders.FirstOrDefault(o => o.Id == keepOrderId);
             OrdersMessage = $"Заказов: {Orders.Count}.";
             await EnsureCnnOptionsAsync();
         }
@@ -108,10 +133,6 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
         catch (Exception ex)
         {
             OrdersMessage = $"Ошибка списка: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
         }
     }
 
@@ -138,8 +159,11 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
         if (selected is null)
         {
             EditAnswerUrl = string.Empty;
+            ShowEditAnswerUrlAdvanced = false;
             OnPropertyChanged(nameof(CanSaveUrl));
             OnPropertyChanged(nameof(CanSubmitQueue));
+            OnPropertyChanged(nameof(EditCardHasAnswerUrl));
+            OnPropertyChanged(nameof(EditCardNeedsAnswerUrl));
             OnPropertyChanged(nameof(ShowRejection));
             OnPropertyChanged(nameof(ShowReviewSection));
             return;
@@ -168,6 +192,7 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
                 _suppressSelectionSync = false;
             }
             EditAnswerUrl = fresh.AnswerUrl ?? string.Empty;
+            ShowEditAnswerUrlAdvanced = string.IsNullOrWhiteSpace(EditAnswerUrl);
             RejectionDisplay = fresh.RejectionReason;
             await ApplyReviewStateAsync(fresh);
         }
@@ -178,6 +203,8 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
 
         OnPropertyChanged(nameof(CanSaveUrl));
         OnPropertyChanged(nameof(CanSubmitQueue));
+        OnPropertyChanged(nameof(EditCardHasAnswerUrl));
+        OnPropertyChanged(nameof(EditCardNeedsAnswerUrl));
         OnPropertyChanged(nameof(ShowRejection));
         OnPropertyChanged(nameof(ShowReviewSection));
     }
@@ -232,7 +259,7 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
             await ApplyReviewStateAsync(updated);
             OnPropertyChanged(nameof(CanSaveUrl));
             OnPropertyChanged(nameof(CanSubmitQueue));
-            OrdersMessage = "Ссылка на ответ сохранена.";
+            OrdersMessage = "Данные ответа для проверки сохранены.";
         }
         catch (Exception ex)
         {
@@ -289,7 +316,8 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
     {
         if (NewOrderSelectedCnn is null || string.IsNullOrWhiteSpace(NewOrderAnswerUrl))
         {
-            OrdersMessage = "Выберите вариант (CNN) и укажите URL файла ответа.";
+            OrdersMessage =
+                "Выберите вариант. Сначала в разделе «Экзамен» нажмите «Загрузить ответ для эксперта» — или откройте «Дополнительно» и вставьте ссылку вручную.";
             return;
         }
 
@@ -326,7 +354,10 @@ public partial class StudentOrdersViewModel(IApiClient apiClient) : ObservableOb
     {
         ShowCreatePanel = !ShowCreatePanel;
         if (ShowCreatePanel)
+        {
+            ShowNewOrderUrlAdvanced = string.IsNullOrWhiteSpace(NewOrderAnswerUrl);
             _ = EnsureCnnOptionsAsync();
+        }
     }
 
     private void ReplaceInList(OrderAnswerReadDto updated)

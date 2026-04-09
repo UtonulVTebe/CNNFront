@@ -12,33 +12,21 @@ namespace TrainerStudApp.Presentation.ViewModels;
 public partial class StudentMainViewModel(
     IApiClient apiClient,
     ITokenStore tokenStore,
+    IAppNavigator appNavigator,
     BlankTemplateSyncService blankSync,
     ExamSessionViewModel examSession,
     StudentOrdersViewModel orders) : ObservableObject
 {
-    [ObservableProperty] private string email = string.Empty;
+    private string? _loginScreenHint;
+    private int _cnnDetailsLoadSerial;
 
-    [ObservableProperty] private string statusText = "Откройте вкладку «Профиль» для входа или регистрации.";
+    [ObservableProperty] private string statusText = string.Empty;
 
     [ObservableProperty] private bool isBusy;
 
     [ObservableProperty] private bool isAuthenticated;
 
     [ObservableProperty] private string userDisplay = string.Empty;
-
-    [ObservableProperty] private string registerEmail = string.Empty;
-
-    [ObservableProperty] private string registerCode = string.Empty;
-
-    [ObservableProperty] private string registerName = string.Empty;
-
-    [ObservableProperty] private bool registerAwaitingCode;
-
-    [ObservableProperty] private string resetEmail = string.Empty;
-
-    [ObservableProperty] private string resetCode = string.Empty;
-
-    [ObservableProperty] private bool resetAwaitingCode;
 
     [ObservableProperty] private CnnListItemDto? selectedCnn;
 
@@ -54,7 +42,7 @@ public partial class StudentMainViewModel(
 
     [ObservableProperty] private double kimPanelZoom = 1.0;
 
-    /// <summary>0 Профиль, 1 Каталог, 2 Экзамен, 3 Результаты, 4 Проверки.</summary>
+    /// <summary>0 Каталог, 1 Экзамен, 2 Результаты, 3 Проверки (профиль — внизу бокового меню).</summary>
     [ObservableProperty] private int selectedNavIndex;
 
     public ObservableCollection<CnnListItemDto> Cnns { get; } = [];
@@ -81,14 +69,25 @@ public partial class StudentMainViewModel(
             SelectedNavIndex = 0;
     }
 
-    [RelayCommand]
-    private async Task RestoreSessionAsync()
+    public string? ConsumeLoginScreenHint()
+    {
+        var t = _loginScreenHint;
+        _loginScreenHint = null;
+        return t;
+    }
+
+    public void ApplyLoggedInState(string displayEmail, string statusMessage)
+    {
+        IsAuthenticated = true;
+        UserDisplay = displayEmail;
+        StatusText = statusMessage;
+    }
+
+    public async Task<bool> TryRestoreSessionAsync()
     {
         if (string.IsNullOrWhiteSpace(tokenStore.RefreshToken)
             && string.IsNullOrWhiteSpace(tokenStore.AccessToken))
-        {
-            return;
-        }
+            return false;
 
         IsBusy = true;
         try
@@ -96,55 +95,21 @@ public partial class StudentMainViewModel(
             var ok = await apiClient.TryRestoreSessionAsync(default);
             if (!ok)
             {
-                StatusText = "Откройте «Профиль» для входа или регистрации.";
-                return;
+                _loginScreenHint = "Войдите снова.";
+                return false;
             }
 
             IsAuthenticated = true;
             UserDisplay = tokenStore.AccountEmail ?? string.Empty;
-            if (!string.IsNullOrWhiteSpace(UserDisplay))
-                Email = UserDisplay;
             StatusText = "Сессия восстановлена.";
+            return true;
         }
         catch (Exception ex)
         {
-            StatusText = $"Не удалось восстановить сессию: {ex.Message}";
+            _loginScreenHint = $"Не удалось восстановить сессию: {ex.Message}";
             tokenStore.Clear();
             IsAuthenticated = false;
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    [RelayCommand]
-    private async Task LoginAsync(string? password)
-    {
-        if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(password))
-        {
-            StatusText = "Укажите email и пароль.";
-            return;
-        }
-
-        await LoginCoreAsync(Email.Trim(), password, "Вход выполнен.");
-    }
-
-    private async Task LoginCoreAsync(string email, string password, string successMessage)
-    {
-        IsBusy = true;
-        try
-        {
-            await apiClient.LoginAsync(new LoginDto { Email = email, Password = password }, default);
-            IsAuthenticated = true;
-            UserDisplay = email;
-            Email = email;
-            StatusText = successMessage;
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Ошибка входа: {ex.Message}";
-            IsAuthenticated = false;
+            return false;
         }
         finally
         {
@@ -160,11 +125,6 @@ public partial class StudentMainViewModel(
         SelectedNavIndex = 0;
         IsAuthenticated = false;
         UserDisplay = string.Empty;
-        RegisterAwaitingCode = false;
-        ResetAwaitingCode = false;
-        RegisterCode = string.Empty;
-        RegisterName = string.Empty;
-        ResetCode = string.Empty;
         Cnns.Clear();
         ClearMaterialLists();
         SelectedCnn = null;
@@ -175,173 +135,27 @@ public partial class StudentMainViewModel(
         KimPreviewIsPdf = false;
         KimPanelZoom = 1.0;
         OnPropertyChanged(nameof(HasExam));
-        StatusText = "Вы вышли.";
-    }
-
-    [RelayCommand]
-    private async Task RegisterSendCodeAsync()
-    {
-        if (string.IsNullOrWhiteSpace(RegisterEmail))
-        {
-            StatusText = "Укажите email для регистрации.";
-            return;
-        }
-
-        IsBusy = true;
-        try
-        {
-            await apiClient.RegisterRequestCodeAsync(
-                new RegisterRequestCodeDto { Email = RegisterEmail.Trim() }, default);
-            RegisterAwaitingCode = true;
-            StatusText = "Если почта доступна, на неё отправлен код. Введите код, имя и пароль ниже.";
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Не удалось отправить код: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    [RelayCommand]
-    private async Task RegisterConfirmAsync(string? password)
-    {
-        if (string.IsNullOrWhiteSpace(RegisterEmail)
-            || string.IsNullOrWhiteSpace(RegisterCode)
-            || string.IsNullOrWhiteSpace(RegisterName)
-            || string.IsNullOrWhiteSpace(password))
-        {
-            StatusText = "Заполните email, код из письма, имя и пароль.";
-            return;
-        }
-
-        IsBusy = true;
-        try
-        {
-            var email = RegisterEmail.Trim();
-            await apiClient.RegisterConfirmAsync(
-                new RegisterConfirmDto
-                {
-                    Email = email,
-                    Code = RegisterCode.Trim(),
-                    Name = RegisterName.Trim(),
-                    Password = password
-                },
-                default);
-
-            try
-            {
-                await apiClient.LoginAsync(new LoginDto { Email = email, Password = password }, default);
-                IsAuthenticated = true;
-                UserDisplay = email;
-                Email = email;
-                RegisterAwaitingCode = false;
-                RegisterCode = string.Empty;
-                RegisterName = string.Empty;
-                StatusText = "Регистрация завершена, вы вошли.";
-            }
-            catch (Exception loginEx)
-            {
-                StatusText =
-                    $"Аккаунт создан, но вход не выполнен: {loginEx.Message}. Войдите вручную после подтверждения почты.";
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Подтверждение регистрации не удалось: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    [RelayCommand]
-    private async Task PasswordResetSendCodeAsync()
-    {
-        if (string.IsNullOrWhiteSpace(ResetEmail))
-        {
-            StatusText = "Укажите email для сброса пароля.";
-            return;
-        }
-
-        IsBusy = true;
-        try
-        {
-            await apiClient.PasswordResetRequestAsync(
-                new PasswordResetRequestCodeDto { Email = ResetEmail.Trim() }, default);
-            ResetAwaitingCode = true;
-            StatusText = "Если почта найдена, на неё отправлен код. Введите код и новый пароль.";
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Запрос кода не выполнен: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    [RelayCommand]
-    private async Task PasswordResetConfirmAsync(string? newPassword)
-    {
-        if (string.IsNullOrWhiteSpace(ResetEmail)
-            || string.IsNullOrWhiteSpace(ResetCode)
-            || string.IsNullOrWhiteSpace(newPassword))
-        {
-            StatusText = "Укажите email, код и новый пароль.";
-            return;
-        }
-
-        IsBusy = true;
-        try
-        {
-            await apiClient.PasswordResetConfirmAsync(
-                new PasswordResetConfirmDto
-                {
-                    Email = ResetEmail.Trim(),
-                    Code = ResetCode.Trim(),
-                    NewPassword = newPassword
-                },
-                default);
-            ResetAwaitingCode = false;
-            ResetCode = string.Empty;
-            Email = ResetEmail.Trim();
-            StatusText = "Пароль обновлён. Войдите с новым паролём.";
-        }
-        catch (Exception ex)
-        {
-            StatusText = $"Сброс пароля не выполнен: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        StatusText = string.Empty;
+        appNavigator.ReturnToLoginAfterLogout();
     }
 
     [RelayCommand]
     private async Task RefreshCnnsAsync()
     {
         if (!IsAuthenticated) return;
-        IsBusy = true;
+        var keepCnnId = SelectedCnn?.Id;
         try
         {
             var list = await apiClient.GetCnnsAsync(default);
             Cnns.Clear();
             foreach (var c in list.OrderBy(x => x.Subject).ThenBy(x => x.Option))
                 Cnns.Add(c);
+            SelectedCnn = keepCnnId is null ? null : Cnns.FirstOrDefault(x => x.Id == keepCnnId);
             StatusText = $"Загружено вариантов: {Cnns.Count}.";
         }
         catch (Exception ex)
         {
             StatusText = $"Ошибка каталога: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
         }
     }
 
@@ -352,10 +166,14 @@ public partial class StudentMainViewModel(
         if (SelectedCnn is null)
             return;
 
-        IsBusy = true;
+        var cnnId = SelectedCnn.Id;
+        var serial = unchecked(++_cnnDetailsLoadSerial);
         try
         {
-            var d = await apiClient.GetCnnDetailsAsync(SelectedCnn.Id, default);
+            var d = await apiClient.GetCnnDetailsAsync(cnnId, default);
+            if (serial != _cnnDetailsLoadSerial || SelectedCnn?.Id != cnnId)
+                return;
+
             CurrentDetails = d;
             foreach (var m in d.Materials.OrderBy(x => x.SortOrder).ThenBy(x => x.Id))
             {
@@ -372,11 +190,8 @@ public partial class StudentMainViewModel(
         }
         catch (Exception ex)
         {
-            StatusText = $"Ошибка загрузки варианта: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
+            if (serial == _cnnDetailsLoadSerial && SelectedCnn?.Id == cnnId)
+                StatusText = $"Ошибка загрузки варианта: {ex.Message}";
         }
     }
 
@@ -545,9 +360,9 @@ public partial class StudentMainViewModel(
             }
 
             orders.NewOrderAnswerUrl = url;
-            SelectedNavIndex = 4;
+            SelectedNavIndex = 3;
             StatusText =
-                "Пакет ответа загружен на сервер. На вкладке «Проверки» подставлена ссылка — создайте заказ или обновите существующий.";
+                "Ответ загружен на сервер. Открыта вкладка «Проверки» — выберите вариант и создайте заказ (или обновите существующий).";
         }
         catch (Exception ex)
         {

@@ -1,8 +1,9 @@
-﻿using System.IO;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Security;
 using System.Windows;
+using System.Windows.Threading;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TrainerStudApp.Presentation.ViewModels;
@@ -31,10 +32,23 @@ public partial class App : Application
         ConfigureServices(services);
         Services = services.BuildServiceProvider();
 
-        var window = Services.GetRequiredService<MainWindow>();
-        window.Show();
-
+        ShutdownMode = ShutdownMode.OnLastWindowClose;
         base.OnStartup(e);
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, async () =>
+        {
+            try
+            {
+                var navigator = Services.GetRequiredService<IAppNavigator>();
+                await navigator.InitializeAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось запустить приложение: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown();
+            }
+        });
     }
 
     public static string GetOpenApiSpecFullPath() =>
@@ -56,10 +70,13 @@ public partial class App : Application
 
         services.AddSingleton<BlankTemplateService>();
         services.AddSingleton<BlankTemplateSyncService>();
+        services.AddSingleton<IAppNavigator, StudentAppNavigator>();
         services.AddSingleton<ExamSessionViewModel>();
         services.AddSingleton<StudentOrdersViewModel>();
         services.AddSingleton<StudentMainViewModel>();
-        services.AddSingleton<MainWindow>();
+        services.AddTransient<StudentAuthViewModel>();
+        services.AddTransient<LoginWindow>();
+        services.AddTransient<MainWindow>();
     }
 
     private static HttpMessageHandler CreateApiHttpMessageHandler(IServiceProvider services)

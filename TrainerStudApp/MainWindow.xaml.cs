@@ -1,4 +1,5 @@
-﻿using System.Windows;
+using System;
+using System.Windows;
 using System.Windows.Controls;
 using CommunityToolkit.Mvvm.Input;
 using TrainerStudApp.Presentation.ViewModels;
@@ -11,13 +12,12 @@ public partial class MainWindow
     {
         InitializeComponent();
         DataContext = viewModel;
-        Loaded += async (_, _) =>
-        {
-            if (viewModel.RestoreSessionCommand is IAsyncRelayCommand restoreCmd)
-                await restoreCmd.ExecuteAsync(null);
-        };
-        viewModel.Exam.GradingCompleted += (_, _) =>
-            Dispatcher.Invoke(() => { viewModel.SelectedNavIndex = 3; });
+
+        // MainWindow — Transient: при повторном входе после выхода иначе накапливались бы подписки на singleton Exam.
+        EventHandler onGradingCompleted = (_, _) =>
+            Dispatcher.Invoke(() => { viewModel.SelectedNavIndex = 2; });
+        viewModel.Exam.GradingCompleted += onGradingCompleted;
+        Closed += (_, _) => viewModel.Exam.GradingCompleted -= onGradingCompleted;
     }
 
     private async void NavList_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -26,34 +26,10 @@ public partial class MainWindow
             return;
         if (DataContext is not StudentMainViewModel vm || !vm.IsAuthenticated)
             return;
-        if (lb.SelectedIndex != 4)
+        if (lb.SelectedIndex != 3)
             return;
         if (vm.Orders.RefreshMineCommand is IAsyncRelayCommand refreshCmd)
             await refreshCmd.ExecuteAsync(null);
-    }
-
-    private async void OnProfileLoginClick(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is not StudentMainViewModel vm) return;
-        if (vm.LoginCommand is IAsyncRelayCommand<string?> cmd)
-            await cmd.ExecuteAsync(ProfileLoginPwd.Password);
-        ProfileLoginPwd.Clear();
-    }
-
-    private async void OnRegisterConfirmClick(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is not StudentMainViewModel vm) return;
-        if (vm.RegisterConfirmCommand is IAsyncRelayCommand<string?> cmd)
-            await cmd.ExecuteAsync(RegisterPwd.Password);
-        RegisterPwd.Clear();
-    }
-
-    private async void OnPasswordResetConfirmClick(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is not StudentMainViewModel vm) return;
-        if (vm.PasswordResetConfirmCommand is IAsyncRelayCommand<string?> cmd)
-            await cmd.ExecuteAsync(ResetNewPwd.Password);
-        ResetNewPwd.Clear();
     }
 
     private void OnBlankUndoInkClick(object sender, RoutedEventArgs e)

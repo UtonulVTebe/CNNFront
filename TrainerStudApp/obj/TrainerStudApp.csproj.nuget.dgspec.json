@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\TrainerStudApp.csproj": {}
+    "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\TrainerStudApp.csproj": {}
   },
   "projects": {
-    "c:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\TrainerStudApp.csproj": {
+    "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\TrainerStudApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\TrainerStudApp.csproj",
+        "projectUniqueName": "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\TrainerStudApp.csproj",
         "projectName": "TrainerStudApp",
-        "projectPath": "c:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\TrainerStudApp.csproj",
+        "projectPath": "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\TrainerStudApp.csproj",
         "packagesPath": "C:\\Users\\kiril_d2gn46f\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\obj\\",
+        "outputPath": "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

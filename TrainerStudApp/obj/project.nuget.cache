@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "hOA2JzimXiU=",
+  "dgSpecHash": "ZO/BsaI5T0w=",
   "success": true,
-  "projectFilePath": "c:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\TrainerStudApp.csproj",
+  "projectFilePath": "C:\\Users\\kiril_d2gn46f\\OneDrive\\Desktop\\CNNFront\\TrainerStudApp\\TrainerStudApp.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\kiril_d2gn46f\\.nuget\\packages\\communitytoolkit.mvvm\\8.4.2\\communitytoolkit.mvvm.8.4.2.nupkg.sha512",
     "C:\\Users\\kiril_d2gn46f\\.nuget\\packages\\microsoft.extensions.configuration\\8.0.0\\microsoft.extensions.configuration.8.0.0.nupkg.sha512",

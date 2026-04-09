@@ -4,17 +4,17 @@
 winexe
 C#
 .cs
-C:\Users\Maksim\Documents\GitHub\CNNFront\TrainerStudApp\obj\Debug\net8.0-windows\
+C:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\obj\Debug\net8.0-windows\
 TrainerStudApp
 none
 false
 TRACE;DEBUG;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
-C:\Users\Maksim\Documents\GitHub\CNNFront\TrainerStudApp\App.xaml
-11407045341
+C:\Users\kiril_d2gn46f\OneDrive\Desktop\CNNFront\TrainerStudApp\App.xaml
+31085959945
 2-1791768078
-381222993205
-219-1288816603
-MainWindow.xaml;
+431323321376
+219-1623405116
+LoginWindow.xaml;MainWindow.xaml;Presentation\Controls\UnderlineFieldChrome.xaml;
 
 False
 
